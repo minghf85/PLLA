@@ -1,0 +1,11 @@
+PySide6
+openai==1.12.0
+SpeechRecognition
+python-dotenv==1.0.1
+RealtimeSTT
+RealtimeTTS
+sounddevice==0.4.6
+soundfile==0.12.1
+numpy==1.26.4
+requests==2.31.0
+httpx==0.27.2

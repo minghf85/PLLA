@@ -1,0 +1,47 @@
+{
+    "zh":
+    {
+        "佐藤":
+        {
+            "T_lang":"ja",
+            "prompt":"......",
+            "referance":"",
+            "scene":"",
+            "speed":1.0,
+            "voice":{
+                "voice_engine":"edgetts",
+                "tone":{
+                    "Name": "ja-JP-KeitaNeural",
+                    "Gender": "Male"
+                }
+            },
+            "icon":"default_avatar.png"
+        },
+        "Alice":
+        {
+            "T_lang":"en",
+            "prompt":"......",
+            "referance":"",
+            "scene":"",
+            "speed":1.0,
+            "voice":{
+                "voice_engine":"GPT_SoVits",
+                "tone":{
+                    "host": "127.0.0.1",
+                    "port": "6880"
+                }
+            },
+            "icon":"default_avatar.png"
+        }
+    },
+
+    "en":
+    {
+        
+    },
+
+    "ja":
+    {
+
+    }
+}
