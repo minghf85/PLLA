@@ -169,5 +169,5 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
-./test.py
-./test.npz
+test.py
+test.npz
