@@ -3,13 +3,13 @@
     {
         "佐藤":
         {
-            "T_lang":"ja",
-            "prompt":"......",
-            "referance":"",
-            "scene":"",
-            "speed":1.0,
+            "T_lang":"ja",//目标学习语言
+            "prompt":"......",//人设
+            "referance":"",//参考书籍知识库
+            "scene":"",//对话场景
+            "speed":1.0,//语速
             "voice":{
-                "voice_engine":"edgetts",
+                "voice_engine":"RealtimeTTS",
                 "tone":{
                     "Name": "ja-JP-KeitaNeural",
                     "Gender": "Male"
