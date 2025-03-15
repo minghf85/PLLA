@@ -31,6 +31,16 @@
                     "scene_name": "商务会议",
                     "scene_prompt": "在商务会议中对话",
                     "scene_referance": ""
+                },
+                "学校": {
+                    "scene_name": "学校",
+                    "scene_prompt": "在学校中对话",
+                    "scene_referance": ""
+                },
+                "医院": {
+                    "scene_name": "医院",
+                    "scene_prompt": "在医院中对话",
+                    "scene_referance": ""
                 }
             }
         },
