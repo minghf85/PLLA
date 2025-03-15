@@ -383,6 +383,140 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // 添加配置加载和磁贴生成功能
+    class TileManager {
+        constructor() {
+            this.config = null;
+            this.loadConfig();
+            this.initEventListeners();
+        }
+
+        async loadConfig() {
+            try {
+                const response = await fetch('config.json');
+                this.config = await response.json();
+                this.generateTiles();
+            } catch (error) {
+                console.error('加载配置文件失败:', error);
+            }
+        }
+
+        generateTiles() {
+            const lang = 'zh'; // 可以根据需要设置语言
+            const contacts = this.config[lang].contact;
+            const scenes = this.config[lang].scene;
+
+            // 生成联系人磁贴
+            const contactsContainer = document.querySelector('#contacts .tiles-container');
+            contactsContainer.innerHTML = ''; // 清空现有磁贴
+            
+            Object.entries(contacts).forEach(([name, data]) => {
+                const tile = this.createContactTile(name, data);
+                contactsContainer.appendChild(tile);
+            });
+
+            // 生成场景磁贴
+            const scenesContainer = document.querySelector('#scenarios .tiles-container');
+            scenesContainer.innerHTML = ''; // 清空现有磁贴
+            
+            Object.entries(scenes).forEach(([name, data]) => {
+                const tile = this.createSceneTile(name, data);
+                scenesContainer.appendChild(tile);
+            });
+        }
+
+        createContactTile(name, data) {
+            const tile = document.createElement('div');
+            tile.className = 'tile';
+            tile.dataset.tileId = `contact_${name}`;
+            tile.dataset.size = '1x1';
+
+            tile.innerHTML = `
+                <div class="tile-drag-handle">
+                    <i class="fas fa-grip-vertical"></i>
+                </div>
+                <div class="tile-resize-handle">
+                    <i class="fas fa-expand-arrows-alt"></i>
+                </div>
+                <img src="${data.icon || 'default_avatar.png'}" alt="${name}">
+                <h3>${name}</h3>
+                <p>${data.T_lang === 'en' ? '英语教师' : 
+                    data.T_lang === 'ja' ? '日语教师' : '语言教师'}</p>
+            `;
+
+            return tile;
+        }
+
+        createSceneTile(name, data) {
+            const tile = document.createElement('div');
+            tile.className = 'tile';
+            tile.dataset.tileId = `scene_${name}`;
+            tile.dataset.size = '1x1';
+
+            tile.innerHTML = `
+                <div class="tile-drag-handle">
+                    <i class="fas fa-grip-vertical"></i>
+                </div>
+                <div class="tile-resize-handle">
+                    <i class="fas fa-expand-arrows-alt"></i>
+                </div>
+                <img src="scene_icons/${name}.png" alt="${name}" onerror="this.src='default_scene.png'">
+                <h3>${name}</h3>
+                <p>${data.scene_name}</p>
+            `;
+
+            return tile;
+        }
+
+        initEventListeners() {
+            // 添加联系人按钮点击事件
+            document.querySelector('#contacts .add-btn').addEventListener('click', () => {
+                this.showAddContactModal();
+            });
+
+            // 添加场景按钮点击事件
+            document.querySelector('#scenarios .add-btn').addEventListener('click', () => {
+                this.showAddSceneModal();
+            });
+
+            // 表单提交事件
+            document.getElementById('addContactForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleAddContact();
+            });
+        }
+
+        showAddContactModal() {
+            const modal = document.getElementById('addContactModal');
+            modal.classList.add('active');
+        }
+
+        async handleAddContact() {
+            const formData = {
+                name: document.getElementById('contactName').value,
+                T_lang: document.getElementById('targetLang').value,
+                prompt: document.getElementById('contactPrompt').value,
+                voice_engine: document.getElementById('voiceEngine').value,
+                // ... 获取其他表单数据
+            };
+
+            // 这里应该添加保存到config.json的逻辑
+            // 由于浏览器安全限制，实际应该通过后端API实现
+            console.log('新增联系人:', formData);
+            
+            // 添加新磁贴
+            const contactsContainer = document.querySelector('#contacts .tiles-container');
+            const tile = this.createContactTile(formData.name, formData);
+            contactsContainer.appendChild(tile);
+            
+            // 关闭模态框
+            document.getElementById('addContactModal').classList.remove('active');
+        }
+    }
+
+    // 初始化
+    const tileManager = new TileManager();
+
     // 初始化磁贴系统
     function initTileSystem() {
         const containers = document.querySelectorAll('.tiles-container[data-sortable="true"]');

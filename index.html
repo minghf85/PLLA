@@ -42,9 +42,14 @@
         <section class="contacts-section" id="contacts">
             <div class="section-header">
                 <h2>联系人</h2>
-                <div class="window-controls">
-                    <button class="minimize-btn"><i class="fas fa-minus"></i></button>
-                    <button class="maximize-btn"><i class="fas fa-expand"></i></button>
+                <div class="header-controls">
+                    <button class="add-btn" title="添加联系人">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                    <div class="window-controls">
+                        <button class="minimize-btn"><i class="fas fa-minus"></i></button>
+                        <button class="maximize-btn"><i class="fas fa-expand"></i></button>
+                    </div>
                 </div>
             </div>
             <div class="tiles-container" data-sortable="true">
@@ -81,9 +86,14 @@
         <section class="scenarios-section" id="scenarios">
             <div class="section-header">
                 <h2>学习场景</h2>
-                <div class="window-controls">
-                    <button class="minimize-btn"><i class="fas fa-minus"></i></button>
-                    <button class="maximize-btn"><i class="fas fa-expand"></i></button>
+                <div class="header-controls">
+                    <button class="add-btn" title="添加场景">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                    <div class="window-controls">
+                        <button class="minimize-btn"><i class="fas fa-minus"></i></button>
+                        <button class="maximize-btn"><i class="fas fa-expand"></i></button>
+                    </div>
                 </div>
             </div>
             <div class="tiles-container" data-sortable="true">
@@ -112,6 +122,48 @@
             </div>
         </section>
     </main>
+
+    <!-- 添加弹窗模板 -->
+    <div class="modal" id="addContactModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>添加联系人</h3>
+                <button class="close-btn"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="addContactForm">
+                    <div class="form-group">
+                        <label for="contactName">名称</label>
+                        <input type="text" id="contactName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="targetLang">目标语言</label>
+                        <select id="targetLang" required>
+                            <option value="en">英语</option>
+                            <option value="ja">日语</option>
+                            <!-- 可以添加更多语言选项 -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="contactPrompt">人设描述</label>
+                        <textarea id="contactPrompt" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="contactIcon">头像</label>
+                        <input type="file" id="contactIcon" accept="image/*">
+                    </div>
+                    <div class="form-group">
+                        <label>语音设置</label>
+                        <select id="voiceEngine">
+                            <option value="RealtimeTTS">RealtimeTTS</option>
+                            <option value="GPT_SoVits">GPT_SoVits</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="submit-btn">添加</button>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <script src="script.js"></script>
 </body>
