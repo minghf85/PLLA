@@ -39,15 +39,33 @@
     <!-- 主要内容区域 -->
     <main class="main-content">
         <!-- 联系人区域 -->
-        <section class="contacts-section">
-            <h2>联系人</h2>
-            <div class="tiles-container">
-                <div class="tile">
+        <section class="contacts-section" id="contacts">
+            <div class="section-header">
+                <h2>联系人</h2>
+                <div class="window-controls">
+                    <button class="minimize-btn"><i class="fas fa-minus"></i></button>
+                    <button class="maximize-btn"><i class="fas fa-expand"></i></button>
+                </div>
+            </div>
+            <div class="tiles-container" data-sortable="true">
+                <div class="tile" data-tile-id="1" data-size="1x1">
+                    <div class="tile-drag-handle">
+                        <i class="fas fa-grip-vertical"></i>
+                    </div>
+                    <div class="tile-resize-handle">
+                        <i class="fas fa-expand-arrows-alt"></i>
+                    </div>
                     <img src="https://via.placeholder.com/50" alt="联系人1">
                     <h3>外教 Sarah</h3>
                     <p>英语会话专家</p>
                 </div>
-                <div class="tile">
+                <div class="tile" data-tile-id="2" data-size="1x1">
+                    <div class="tile-drag-handle">
+                        <i class="fas fa-grip-vertical"></i>
+                    </div>
+                    <div class="tile-resize-handle">
+                        <i class="fas fa-expand-arrows-alt"></i>
+                    </div>
                     <img src="https://via.placeholder.com/50" alt="联系人2">
                     <h3>外教 Mike</h3>
                     <p>商务英语教师</p>
@@ -55,22 +73,42 @@
                 <!-- 更多联系人磁贴 -->
             </div>
         </section>
-
+        
+        <!-- 拖拽调整大小的分隔条 -->
+        <div class="resizer" id="mainResizer"></div>
+        
         <!-- 场景区域 -->
-        <section class="scenarios-section">
-            <h2>学习场景</h2>
-            <div class="tiles-container">
-                <div class="tile">
+        <section class="scenarios-section" id="scenarios">
+            <div class="section-header">
+                <h2>学习场景</h2>
+                <div class="window-controls">
+                    <button class="minimize-btn"><i class="fas fa-minus"></i></button>
+                    <button class="maximize-btn"><i class="fas fa-expand"></i></button>
+                </div>
+            </div>
+            <div class="tiles-container" data-sortable="true">
+                <div class="tile" data-tile-id="scene1" data-size="1x1">
+                    <div class="tile-drag-handle">
+                        <i class="fas fa-grip-vertical"></i>
+                    </div>
+                    <div class="tile-resize-handle">
+                        <i class="fas fa-expand-arrows-alt"></i>
+                    </div>
                     <img src="https://via.placeholder.com/100" alt="场景1">
                     <h3>咖啡厅对话</h3>
                     <p>练习点餐对话</p>
                 </div>
-                <div class="tile">
+                <div class="tile" data-tile-id="scene2" data-size="2x1">
+                    <div class="tile-drag-handle">
+                        <i class="fas fa-grip-vertical"></i>
+                    </div>
+                    <div class="tile-resize-handle">
+                        <i class="fas fa-expand-arrows-alt"></i>
+                    </div>
                     <img src="https://via.placeholder.com/100" alt="场景2">
                     <h3>商务会议</h3>
                     <p>商务英语场景</p>
                 </div>
-                <!-- 更多场景磁贴 -->
             </div>
         </section>
     </main>
