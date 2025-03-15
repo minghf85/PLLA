@@ -1,0 +1,145 @@
+:root {
+    --primary-color: #4a90e2;
+    --background-color: #f5f5f5;
+    --text-color: #333;
+    --sidebar-width: 250px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: var(--background-color);
+    color: var(--text-color);
+}
+
+/* 顶部导航栏样式 */
+.top-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background-color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    z-index: 1000;
+}
+
+.menu-btn, .search-btn, .theme-btn {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 10px;
+    color: var(--text-color);
+}
+
+.right-controls {
+    display: flex;
+    gap: 10px;
+}
+
+/* 侧边栏样式 */
+.sidebar {
+    position: fixed;
+    left: -var(--sidebar-width);
+    top: 60px;
+    width: var(--sidebar-width);
+    height: calc(100vh - 60px);
+    background-color: white;
+    transition: left 0.3s ease;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+    z-index: 900;
+}
+
+.sidebar.active {
+    left: 0;
+}
+
+.sidebar-content {
+    padding: 20px;
+}
+
+.sidebar-content ul {
+    list-style: none;
+    margin-top: 20px;
+}
+
+.sidebar-content ul li {
+    margin-bottom: 15px;
+}
+
+.sidebar-content ul li a {
+    text-decoration: none;
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* 主要内容区域样式 */
+.main-content {
+    margin-top: 60px;
+    padding: 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.contacts-section, .scenarios-section {
+    background-color: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.tiles-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.tile {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 15px;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: transform 0.2s;
+}
+
+.tile:hover {
+    transform: translateY(-5px);
+}
+
+.tile img {
+    border-radius: 50%;
+    margin-bottom: 10px;
+}
+
+.tile h3 {
+    font-size: 1rem;
+    margin-bottom: 5px;
+}
+
+.tile p {
+    font-size: 0.9rem;
+    color: #666;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .main-content {
+        grid-template-columns: 1fr;
+    }
+}
+
