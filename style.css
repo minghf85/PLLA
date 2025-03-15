@@ -272,13 +272,14 @@ body {
 .tile[data-size="2x2"] { width: 250px; height: 250px; }
 .tile[data-size="1x2"] { width: 120px; height: 250px; }
 
-/* 磁贴内容自适应 */
+/* 磁贴内容样式 */
 .tile img {
-    width: 40px;
-    height: 40px;
+    width: 50px;
+    height: 50px;
     border-radius: 50%;
-    margin-bottom: 8px;
-    transition: width 0.3s, height 0.3s;
+    margin-bottom: 10px;
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    transition: all 0.3s ease;
 }
 
 .tile[data-size="2x1"] img,
@@ -288,14 +289,21 @@ body {
 }
 
 .tile h3 {
-    font-size: 1rem;
-    margin: 5px 0;
-    transition: font-size 0.3s;
+    color: white;
+    font-size: 1.2rem;
+    margin-bottom: 8px;
+    font-weight: 500;
 }
 
 .tile[data-size="2x1"] h3,
 .tile[data-size="2x2"] h3 {
     font-size: 1.2rem;
+}
+
+.tile p {
+    color: white;
+    font-size: 0.9rem;
+    opacity: 0.9;
 }
 
 /* 暗色主题适配 */
@@ -612,5 +620,69 @@ body.dark-mode .theme-btn {
 
 .submit-btn:hover {
     background: var(--primary-dark);
+}
+
+/* 联系人磁贴样式 */
+.contact-tile {
+    background: var(--surface-color);
+    color: var(--text-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.contact-tile:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.contact-tile img {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    margin-bottom: 10px;
+    border: 2px solid var(--border-color);
+    transition: all 0.3s ease;
+}
+
+.contact-tile:hover img {
+    border-color: var(--primary-color);
+    transform: scale(1.1);
+}
+
+/* 场景磁贴样式 */
+.scene-tile {
+    color: white;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.scene-tile h3 {
+    font-size: 1.2rem;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.scene-tile p {
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+.scene-tile:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+/* 调整拖动和调整大小手柄的颜色 */
+.scene-tile .tile-drag-handle,
+.scene-tile .tile-resize-handle {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.scene-tile:hover .tile-drag-handle,
+.scene-tile:hover .tile-resize-handle {
+    color: white;
 }
 

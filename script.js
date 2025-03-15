@@ -389,6 +389,15 @@ document.addEventListener('DOMContentLoaded', function() {
             this.config = null;
             this.loadConfig();
             this.initEventListeners();
+            this.colors = [
+                'rgb(255, 99, 132)',   // 红色
+                'rgb(255, 159, 64)',   // 橙色
+                'rgb(255, 205, 86)',   // 黄色
+                'rgb(75, 192, 192)',   // 青色
+                'rgb(54, 162, 235)',   // 蓝色
+                'rgb(153, 102, 255)',  // 紫色
+                'rgb(255, 99, 255)'    // 粉色
+            ];
         }
 
         async loadConfig() {
@@ -403,8 +412,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         generateTiles() {
             const lang = 'zh'; // 可以根据需要设置语言
-            const contacts = this.config[lang].contact;
-            const scenes = this.config[lang].scene;
+            const contacts = this.config.Learn_config[lang].contact;
+            const scenes = this.config.Learn_config[lang].scene;
 
             // 生成联系人磁贴
             const contactsContainer = document.querySelector('#contacts .tiles-container');
@@ -423,6 +432,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 const tile = this.createSceneTile(name, data);
                 scenesContainer.appendChild(tile);
             });
+
+            // 重新初始化拖拽系统
+            initTileSystem();
         }
 
         createContactTile(name, data) {
@@ -430,6 +442,11 @@ document.addEventListener('DOMContentLoaded', function() {
             tile.className = 'tile';
             tile.dataset.tileId = `contact_${name}`;
             tile.dataset.size = '1x1';
+
+            // 随机选择一个颜色
+            const color = this.colors[Math.floor(Math.random() * this.colors.length)];
+            tile.style.backgroundColor = color;
+            tile.style.color = '#ffffff';  // 文字使用白色
 
             tile.innerHTML = `
                 <div class="tile-drag-handle">
@@ -449,9 +466,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
         createSceneTile(name, data) {
             const tile = document.createElement('div');
-            tile.className = 'tile';
+            tile.className = 'tile scene-tile';
             tile.dataset.tileId = `scene_${name}`;
             tile.dataset.size = '1x1';
+            
+            // 随机选择一个颜色
+            const color = this.colors[Math.floor(Math.random() * this.colors.length)];
+            tile.style.backgroundColor = color;
+            tile.style.color = '#ffffff';  // 文字使用白色
 
             tile.innerHTML = `
                 <div class="tile-drag-handle">
@@ -460,9 +482,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="tile-resize-handle">
                     <i class="fas fa-expand-arrows-alt"></i>
                 </div>
-                <img src="scene_icons/${name}.png" alt="${name}" onerror="this.src='default_scene.png'">
                 <h3>${name}</h3>
-                <p>${data.scene_name}</p>
+                <p>${data.scene_prompt}</p>
             `;
 
             return tile;
@@ -497,20 +518,35 @@ document.addEventListener('DOMContentLoaded', function() {
                 T_lang: document.getElementById('targetLang').value,
                 prompt: document.getElementById('contactPrompt').value,
                 voice_engine: document.getElementById('voiceEngine').value,
-                // ... 获取其他表单数据
             };
 
-            // 这里应该添加保存到config.json的逻辑
-            // 由于浏览器安全限制，实际应该通过后端API实现
-            console.log('新增联系人:', formData);
-            
-            // 添加新磁贴
-            const contactsContainer = document.querySelector('#contacts .tiles-container');
-            const tile = this.createContactTile(formData.name, formData);
-            contactsContainer.appendChild(tile);
-            
-            // 关闭模态框
-            document.getElementById('addContactModal').classList.remove('active');
+            try {
+                // 发送到后端保存
+                const response = await fetch('/api/add_contact', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                if (response.ok) {
+                    // 添加新磁贴
+                    const contactsContainer = document.querySelector('#contacts .tiles-container');
+                    const tile = this.createContactTile(formData.name, formData);
+                    contactsContainer.appendChild(tile);
+                    
+                    // 重新初始化拖拽系统
+                    initTileSystem();
+                    
+                    // 关闭模态框
+                    document.getElementById('addContactModal').classList.remove('active');
+                } else {
+                    console.error('保存失败');
+                }
+            } catch (error) {
+                console.error('保存失败:', error);
+            }
         }
     }
 
