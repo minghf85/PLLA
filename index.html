@@ -38,12 +38,12 @@
 
     <!-- 主要内容区域 -->
     <main class="main-content">
-        <!-- 联系人区域 -->
-        <section class="contacts-section" id="contacts">
+        <!-- 磁贴区域 -->
+        <section class="tiles-section" id="tiles">
             <div class="section-header">
-                <h2>联系人</h2>
+                <h2>磁贴</h2>
                 <div class="header-controls">
-                    <button class="add-btn" title="添加联系人">
+                    <button class="add-btn" title="添加磁贴">
                         <i class="fas fa-plus"></i>
                     </button>
                     <div class="window-controls">
@@ -53,117 +53,13 @@
                 </div>
             </div>
             <div class="tiles-container" data-sortable="true">
-                <div class="tile" data-tile-id="1" data-size="1x1">
-                    <div class="tile-drag-handle">
-                        <i class="fas fa-grip-vertical"></i>
-                    </div>
-                    <div class="tile-resize-handle">
-                        <i class="fas fa-expand-arrows-alt"></i>
-                    </div>
-                    <img src="https://via.placeholder.com/50" alt="联系人1">
-                    <h3>外教 Sarah</h3>
-                    <p>英语会话专家</p>
-                </div>
-                <div class="tile" data-tile-id="2" data-size="1x1">
-                    <div class="tile-drag-handle">
-                        <i class="fas fa-grip-vertical"></i>
-                    </div>
-                    <div class="tile-resize-handle">
-                        <i class="fas fa-expand-arrows-alt"></i>
-                    </div>
-                    <img src="https://via.placeholder.com/50" alt="联系人2">
-                    <h3>外教 Mike</h3>
-                    <p>商务英语教师</p>
-                </div>
-                <!-- 更多联系人磁贴 -->
+                <!-- 磁贴将由 JavaScript 动态生成 -->
             </div>
         </section>
         
         <!-- 拖拽调整大小的分隔条 -->
         <div class="resizer" id="mainResizer"></div>
-        
-        <!-- 场景区域 -->
-        <section class="scenarios-section" id="scenarios">
-            <div class="section-header">
-                <h2>学习场景</h2>
-                <div class="header-controls">
-                    <button class="add-btn" title="添加场景">
-                        <i class="fas fa-plus"></i>
-                    </button>
-                    <div class="window-controls">
-                        <button class="minimize-btn"><i class="fas fa-minus"></i></button>
-                        <button class="maximize-btn"><i class="fas fa-expand"></i></button>
-                    </div>
-                </div>
-            </div>
-            <div class="tiles-container" data-sortable="true">
-                <div class="tile" data-tile-id="scene1" data-size="1x1">
-                    <div class="tile-drag-handle">
-                        <i class="fas fa-grip-vertical"></i>
-                    </div>
-                    <div class="tile-resize-handle">
-                        <i class="fas fa-expand-arrows-alt"></i>
-                    </div>
-                    <img src="https://via.placeholder.com/100" alt="场景1">
-                    <h3>咖啡厅对话</h3>
-                    <p>练习点餐对话</p>
-                </div>
-                <div class="tile" data-tile-id="scene2" data-size="2x1">
-                    <div class="tile-drag-handle">
-                        <i class="fas fa-grip-vertical"></i>
-                    </div>
-                    <div class="tile-resize-handle">
-                        <i class="fas fa-expand-arrows-alt"></i>
-                    </div>
-                    <img src="https://via.placeholder.com/100" alt="场景2">
-                    <h3>商务会议</h3>
-                    <p>商务英语场景</p>
-                </div>
-            </div>
-        </section>
     </main>
-
-    <!-- 添加弹窗模板 -->
-    <div class="modal" id="addContactModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>添加联系人</h3>
-                <button class="close-btn"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="modal-body">
-                <form id="addContactForm">
-                    <div class="form-group">
-                        <label for="contactName">名称</label>
-                        <input type="text" id="contactName" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="targetLang">目标语言</label>
-                        <select id="targetLang" required>
-                            <option value="en">英语</option>
-                            <option value="ja">日语</option>
-                            <!-- 可以添加更多语言选项 -->
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="contactPrompt">人设描述</label>
-                        <textarea id="contactPrompt" rows="3"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="contactIcon">头像</label>
-                        <input type="file" id="contactIcon" accept="image/*">
-                    </div>
-                    <div class="form-group">
-                        <label>语音设置</label>
-                        <select id="voiceEngine">
-                            <option value="RealtimeTTS">RealtimeTTS</option>
-                            <option value="GPT_SoVits">GPT_SoVits</option>
-                        </select>
-                    </div>
-                    <button type="submit" class="submit-btn">添加</button>
-                </form>
-            </div>
-        </div>
-    </div>
 
     <script src="script.js"></script>
 </body>

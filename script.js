@@ -279,6 +279,8 @@ document.addEventListener('DOMContentLoaded', function() {
             this.gridSize = 120;
             this.gap = 10;
             this.gridMap = new Map(); // 存储网格位置和对应的磁贴
+            this.overlappingTile = null;
+            this.overlappingTimer = null;
             this.init();
         }
 
@@ -303,10 +305,79 @@ document.addEventListener('DOMContentLoaded', function() {
             this.preview.style.top = `${gridPos.y}px`;
             this.preview.style.width = `${width}px`;
             this.preview.style.height = `${height}px`;
+
+            // 修正预览框的重叠检测区域
+            const previewRect = {
+                left: gridPos.x,
+                top: gridPos.y,
+                right: gridPos.x + width,
+                bottom: gridPos.y + height
+            };
+
+            const draggedTile = document.querySelector('.tile.dragging');
+            if (draggedTile) {
+                const overlappingTile = this.checkPreviewOverlapping(previewRect);
+                
+                // 处理重叠状态变化
+                if (overlappingTile !== this.overlappingTile) {
+                    // 清除之前的计时器
+                    if (this.overlappingTimer) {
+                        clearTimeout(this.overlappingTimer);
+                        this.overlappingTimer = null;
+                    }
+                    
+                    // 移除之前的重叠效果
+                    if (this.overlappingTile) {
+                        this.overlappingTile.classList.remove('tile-overlapping');
+                        console.log('预览框结束重叠:', this.overlappingTile.dataset.tileId);
+                    }
+
+                    this.overlappingTile = overlappingTile;
+
+                    // 设置新的重叠效果
+                    if (overlappingTile) {
+                        overlappingTile.classList.add('tile-overlapping');
+                        console.log('预览框开始重叠:', overlappingTile.dataset.tileId);
+                        
+                        // 设置新的计时器
+                        this.overlappingTimer = setTimeout(() => {
+                            console.log('预览框重叠超过2秒:', overlappingTile.dataset.tileId);
+                            this.handleOverlapTimeout(draggedTile, overlappingTile);
+                        }, 2000);
+                    }
+                }
+            }
+        }
+
+        handleOverlapTimeout(draggedTile, targetTile) {
+            // 这里可以添加振动反馈
+            if (window.navigator.vibrate) {
+                window.navigator.vibrate(50);
+            }
+            
+            // 添加视觉反馈
+            targetTile.classList.add('tile-overlap-complete');
+            setTimeout(() => targetTile.classList.remove('tile-overlap-complete'), 500);
+            
+            console.log('处理重叠超时:', {
+                dragged: draggedTile.dataset.tileId,
+                target: targetTile.dataset.tileId
+            });
         }
 
         hidePreview() {
             this.preview.style.display = 'none';
+            
+            // 清理重叠状态
+            if (this.overlappingTimer) {
+                clearTimeout(this.overlappingTimer);
+                this.overlappingTimer = null;
+            }
+            
+            if (this.overlappingTile) {
+                this.overlappingTile.classList.remove('tile-overlapping');
+                this.overlappingTile = null;
+            }
         }
 
         updateGridDimensions() {
@@ -471,108 +542,332 @@ document.addEventListener('DOMContentLoaded', function() {
             this.updateTilePosition(tile, x, y);
         }
 
-        // 修改创建文件夹方法
-        createFolder(tile1, tile2) {
-            // 如果任一磁贴是文件夹，则不创建新文件夹
-            if (tile1.classList.contains('folder') || tile2.classList.contains('folder')) {
-                return null;
+        // 修改重叠检测方法，添加柔性检测
+        checkPreviewOverlapping(previewRect) {
+            const draggedTile = document.querySelector('.tile.dragging');
+            if (!draggedTile) return null;
+
+            const draggedSize = this.getTileSize(draggedTile);
+            const draggedArea = draggedSize.w * draggedSize.h;
+
+            const tiles = Array.from(this.container.querySelectorAll('.tile'))
+                .filter(tile => tile !== draggedTile);
+
+            for (const tile of tiles) {
+                const tileSize = this.getTileSize(tile);
+                const tileArea = tileSize.w * tileSize.h;
+
+                // 如果拖动的磁贴比目标磁贴大，跳过检测
+                if (draggedArea > tileArea) {
+                    continue;
+                }
+
+                const rect = tile.getBoundingClientRect();
+                const containerRect = this.container.getBoundingClientRect();
+                
+                const tileRect = {
+                    left: rect.left - containerRect.left,
+                    top: rect.top - containerRect.top,
+                    right: rect.right - containerRect.left,
+                    bottom: rect.bottom - containerRect.top
+                };
+
+                // 计算重叠区域
+                const overlapArea = this.calculateOverlapArea(previewRect, tileRect);
+                const previewArea = (previewRect.right - previewRect.left) * (previewRect.bottom - previewRect.top);
+                const overlapRatio = overlapArea / previewArea;
+
+                // 设置重叠阈值（比如80%）
+                const OVERLAP_THRESHOLD = 0.8;
+
+                if (overlapRatio > OVERLAP_THRESHOLD) {
+                    console.log('预览框重叠比例:', {
+                        tileId: tile.dataset.tileId,
+                        ratio: overlapRatio.toFixed(2),
+                        area: overlapArea
+                    });
+                    return tile;
+                }
             }
 
-            const folder = document.createElement('div');
-            folder.className = 'tile folder';
-            folder.dataset.tileId = `folder_${Date.now()}`;
-            folder.dataset.size = '1x1';
+            return null;
+        }
+
+        // 添加计算重叠面积的辅助方法
+        calculateOverlapArea(rect1, rect2) {
+            const xOverlap = Math.max(0,
+                Math.min(rect1.right, rect2.right) - Math.max(rect1.left, rect2.left)
+            );
+            const yOverlap = Math.max(0,
+                Math.min(rect1.bottom, rect2.bottom) - Math.max(rect1.top, rect2.top)
+            );
             
-            // 使用第一个磁贴的位置
-            const transform = window.getComputedStyle(tile1).transform;
-            folder.style.transform = transform;
+            return xOverlap * yOverlap;
+        }
+    }
+
+    // 基础磁贴类
+    class BaseTile {
+        constructor(id, options = {}) {
+            this.id = id;
+            this.size = options.size || '1x1';
+            this.title = options.title || '';
+            this.description = options.description || '';
+            this.icon = options.icon || 'fa-square';
+            this.color = options.color || '#4a90e2';
+            this.resizable = options.resizable !== false;
+            this.element = this.createElement();
+            this.overlappingTimer = null;
+            this.bindBaseEvents();
+        }
+
+        createElement() {
+            const tile = document.createElement('div');
+            tile.className = 'tile';
+            tile.dataset.tileId = this.id;
+            tile.dataset.size = this.size;
             
-            // 创建文件夹内容
-            folder.innerHTML = `
+            // 基础磁贴结构
+            tile.innerHTML = `
                 <div class="tile-drag-handle">
                     <i class="fas fa-grip-vertical"></i>
                 </div>
-                <div class="folder-content">
-                    <div class="folder-grid">
-                        <div class="folder-preview"></div>
-                        <div class="folder-items hidden"></div>
+                <div class="tile-content">
+                    <div class="tile-icon">
+                        <i class="fas ${this.icon}" style="color: ${this.color}"></i>
+                    </div>
+                    <div class="tile-info">
+                        <h3>${this.title}</h3>
+                        <p>${this.description}</p>
                     </div>
                 </div>
+                ${this.resizable ? '<div class="tile-resize-handle"></div>' : ''}
             `;
 
-            const folderPreview = folder.querySelector('.folder-preview');
-            const folderItems = folder.querySelector('.folder-items');
+            // 设置基础样式
+            tile.style.backgroundColor = this.getBackgroundColor();
             
-            // 添加磁贴到文件夹
-            this.addTileToFolder(tile1, folder);
-            this.addTileToFolder(tile2, folder);
-            
-            // 更新预览显示
-            this.updateFolderPreview(folder);
-            
-            // 添加双击事件处理
-            folder.addEventListener('dblclick', () => {
-                folderPreview.classList.toggle('hidden');
-                folderItems.classList.toggle('hidden');
+            return tile;
+        }
+
+        getBackgroundColor() {
+            return `${this.color}22`; // 使用主色调的半透明版本
+        }
+
+        setSize(width, height) {
+            this.element.style.width = `${width}px`;
+            this.element.style.height = `${height}px`;
+            this.element.dataset.size = `${Math.round(width/120)}x${Math.round(height/120)}`;
+        }
+
+        bindBaseEvents() {
+            // 双击事件
+            this.element.addEventListener('dblclick', (e) => {
+                console.log('双击磁贴:', this.id);
+                this.onDoubleClick(e);
+            });
+
+            // 重叠检测
+            this.element.addEventListener('dragenter', () => {
+                console.log('开始重叠:', this.id);
+                this.startOverlapTimer();
+            });
+
+            this.element.addEventListener('dragleave', () => {
+                console.log('结束重叠:', this.id);
+                this.clearOverlapTimer();
+            });
+        }
+
+        startOverlapTimer() {
+            this.clearOverlapTimer();
+            this.overlappingTimer = setTimeout(() => {
+                console.log('重叠超过2秒:', this.id);
+                this.onOverlapTimeout();
+            }, 2000);
+        }
+
+        clearOverlapTimer() {
+            if (this.overlappingTimer) {
+                clearTimeout(this.overlappingTimer);
+                this.overlappingTimer = null;
+            }
+        }
+
+        // 可被子类覆盖的事件处理方法
+        onDoubleClick(e) {
+            console.log('基础磁贴双击事件');
+        }
+
+        onOverlapTimeout() {
+            console.log('基础磁贴重叠超时事件');
+        }
+    }
+
+    // 联系人磁贴类
+    class ContactTile extends BaseTile {
+        constructor(name, data) {
+            super(`contact_${name}`, {
+                title: name,
+                description: data.description,
+                icon: 'fa-user',
+                color: '#2ecc71',
+                size: data.size || '1x1'
             });
             
-            // 添加文件夹到容器
-            this.container.appendChild(folder);
-            this.updateTilePosition(folder, 
-                this.getGridPosition(folder.getBoundingClientRect().left, 
-                folder.getBoundingClientRect().top));
-            
-            return folder;
+            this.contact = data;
+            this.bindEvents();
         }
 
-        // 添加磁贴到文件夹
-        addTileToFolder(tile, folder) {
-            const folderItems = folder.querySelector('.folder-items');
-            const clone = tile.cloneNode(true);
-            clone.style.transform = 'none';  // 重置transform
-            folderItems.appendChild(clone);
-            tile.remove();
+        bindEvents() {
+            this.element.addEventListener('click', () => this.onClick());
         }
 
-        // 更新文件夹预览
-        updateFolderPreview(folder) {
-            const preview = folder.querySelector('.folder-preview');
-            const items = folder.querySelectorAll('.folder-items > .tile');
+        onClick() {
+            // 打开联系人详情
+            console.log('打开联系人:', this.contact);
+        }
+
+        onDoubleClick(e) {
+            console.log('编辑联系人:', this.contact);
+            // 实现联系人编辑界面
+        }
+
+        onOverlapTimeout() {
+            console.log('联系人磁贴重叠超时:', this.contact);
+            // 实现重叠处理逻辑
+        }
+    }
+
+    // 学习场景磁贴类
+    class ScenarioTile extends BaseTile {
+        constructor(name, data) {
+            super(`scenario_${name}`, {
+                title: name,
+                description: data.description,
+                icon: 'fa-book',
+                color: '#e74c3c',
+                size: data.size || '1x1'
+            });
             
-            preview.innerHTML = '';
-            items.forEach((item, index) => {
-                if (index < 9) {  // 只显示前9个
-                    const previewItem = item.cloneNode(true);
-                    previewItem.style.transform = 'none';
-                    preview.appendChild(previewItem);
+            this.scenario = data;
+            this.bindEvents();
+        }
+
+        bindEvents() {
+            this.element.addEventListener('click', () => this.onClick());
+        }
+
+        onClick() {
+            // 打开学习场景
+            console.log('打开场景:', this.scenario);
+        }
+
+        onDoubleClick(e) {
+            console.log('编辑场景:', this.scenario);
+            // 实现场景编辑界面
+        }
+
+        onOverlapTimeout() {
+            console.log('场景磁贴重叠超时:', this.scenario);
+            // 实现重叠处理逻辑
+        }
+    }
+
+    // 功能磁贴类
+    class FunctionTile extends BaseTile {
+        constructor(type, options = {}) {
+            const config = FunctionTile.getConfig(type);
+            super(`function_${type}`, {
+                ...config,
+                ...options,
+                size: '1x1',
+                resizable: false
+            });
+            
+            this.type = type;
+            this.bindEvents();
+        }
+
+        static getConfig(type) {
+            const configs = {
+                menu: {
+                    title: '菜单',
+                    icon: 'fa-bars',
+                    color: '#9b59b6'
+                },
+                search: {
+                    title: '搜索',
+                    icon: 'fa-search',
+                    color: '#3498db'
+                },
+                theme: {
+                    title: '主题',
+                    icon: 'fa-lightbulb',
+                    color: '#f1c40f'
+                },
+                'add-contact': {
+                    title: '添加联系人',
+                    icon: 'fa-user-plus',
+                    color: '#27ae60'
+                },
+                'add-scenario': {
+                    title: '添加场景',
+                    icon: 'fa-plus',
+                    color: '#c0392b'
+                },
+                'edit-contact': {
+                    title: '编辑联系人',
+                    icon: 'fa-user-edit',
+                    color: '#16a085'
+                },
+                'edit-scenario': {
+                    title: '编辑场景',
+                    icon: 'fa-edit',
+                    color: '#d35400'
                 }
-            });
+            };
+            return configs[type] || {};
+        }
 
-            // 如果有更多项目，显示数量标记
-            if (items.length > 9) {
-                const counter = document.createElement('div');
-                counter.className = 'folder-counter';
-                counter.textContent = `+${items.length - 9}`;
-                preview.appendChild(counter);
+        bindEvents() {
+            this.element.addEventListener('click', () => this.onClick());
+        }
+
+        onClick() {
+            switch (this.type) {
+                case 'menu':
+                    document.getElementById('sidebar').classList.toggle('active');
+                    break;
+                case 'theme':
+                    document.body.classList.toggle('dark-theme');
+                    break;
+                case 'search':
+                    // 实现搜索功能
+                    break;
+                case 'add-contact':
+                    // 实现添加联系人功能
+                    break;
+                case 'add-scenario':
+                    // 实现添加场景功能
+                    break;
+                case 'edit-contact':
+                    console.log('打开联系人编辑器');
+                    // 实现编辑联系人功能
+                    break;
+                case 'edit-scenario':
+                    console.log('打开场景编辑器');
+                    // 实现编辑场景功能
+                    break;
             }
         }
     }
 
-    // 添加配置加载和磁贴生成功能
+    // 修改 TileManager 类
     class TileManager {
         constructor() {
             this.config = null;
             this.loadConfig();
-            this.initEventListeners();
-            this.colors = [
-                'rgb(255, 99, 132)',   // 红色
-                'rgb(255, 159, 64)',   // 橙色
-                'rgb(255, 205, 86)',   // 黄色
-                'rgb(75, 192, 192)',   // 青色
-                'rgb(54, 162, 235)',   // 蓝色
-                'rgb(153, 102, 255)',  // 紫色
-                'rgb(255, 99, 255)'    // 粉色
-            ];
         }
 
         async loadConfig() {
@@ -586,142 +881,39 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         generateTiles() {
-            const lang = 'zh'; // 可以根据需要设置语言
-            const contacts = this.config.Learn_config[lang].contact;
-            const scenes = this.config.Learn_config[lang].scene;
+            const container = document.querySelector('.tiles-container');
+            container.innerHTML = '';
 
-            // 生成联系人磁贴
-            const contactsContainer = document.querySelector('#contacts .tiles-container');
-            contactsContainer.innerHTML = ''; // 清空现有磁贴
-            
-            Object.entries(contacts).forEach(([name, data]) => {
-                const tile = this.createContactTile(name, data);
-                contactsContainer.appendChild(tile);
+            // 添加功能磁贴
+            const functionTiles = [
+                new FunctionTile('menu'),
+                new FunctionTile('search'),
+                new FunctionTile('theme'),
+                new FunctionTile('add-contact'),
+                new FunctionTile('add-scenario'),
+                new FunctionTile('edit-contact'),
+                new FunctionTile('edit-scenario')
+            ];
+
+            // 添加联系人磁贴
+            const contacts = this.config.Learn_config.zh.contact;
+            const contactTiles = Object.entries(contacts).map(
+                ([name, data]) => new ContactTile(name, data)
+            );
+
+            // 添加场景磁贴
+            const scenarios = this.config.Learn_config.zh.scene;
+            const scenarioTiles = Object.entries(scenarios).map(
+                ([name, data]) => new ScenarioTile(name, data)
+            );
+
+            // 将所有磁贴添加到容器
+            [...functionTiles, ...contactTiles, ...scenarioTiles].forEach(tile => {
+                container.appendChild(tile.element);
             });
 
-            // 生成场景磁贴
-            const scenesContainer = document.querySelector('#scenarios .tiles-container');
-            scenesContainer.innerHTML = ''; // 清空现有磁贴
-            
-            Object.entries(scenes).forEach(([name, data]) => {
-                const tile = this.createSceneTile(name, data);
-                scenesContainer.appendChild(tile);
-            });
-
-            // 重新初始化拖拽系统
+            // 初始化磁贴系统
             initTileSystem();
-        }
-
-        createContactTile(name, data) {
-            const tile = document.createElement('div');
-            tile.className = 'tile';
-            tile.dataset.tileId = `contact_${name}`;
-            tile.dataset.size = '1x1';
-
-            // 随机选择一个颜色
-            const color = this.colors[Math.floor(Math.random() * this.colors.length)];
-            tile.style.backgroundColor = color;
-            tile.style.color = '#ffffff';  // 文字使用白色
-
-            tile.innerHTML = `
-                <div class="tile-drag-handle">
-                    <i class="fas fa-grip-vertical"></i>
-                </div>
-                <div class="tile-resize-handle">
-                    <i class="fas fa-expand-arrows-alt"></i>
-                </div>
-                <img src="${data.icon || 'default_avatar.png'}" alt="${name}">
-                <h3>${name}</h3>
-                <p>${data.T_lang === 'en' ? '英语教师' : 
-                    data.T_lang === 'ja' ? '日语教师' : '语言教师'}</p>
-            `;
-
-            return tile;
-        }
-
-        createSceneTile(name, data) {
-            const tile = document.createElement('div');
-            tile.className = 'tile scene-tile';
-            tile.dataset.tileId = `scene_${name}`;
-            tile.dataset.size = '1x1';
-            
-            // 随机选择一个颜色
-            const color = this.colors[Math.floor(Math.random() * this.colors.length)];
-            tile.style.backgroundColor = color;
-            tile.style.color = '#ffffff';  // 文字使用白色
-
-            tile.innerHTML = `
-                <div class="tile-drag-handle">
-                    <i class="fas fa-grip-vertical"></i>
-                </div>
-                <div class="tile-resize-handle">
-                    <i class="fas fa-expand-arrows-alt"></i>
-                </div>
-                <h3>${name}</h3>
-                <p>${data.scene_prompt}</p>
-            `;
-
-            return tile;
-        }
-
-        initEventListeners() {
-            // 添加联系人按钮点击事件
-            document.querySelector('#contacts .add-btn').addEventListener('click', () => {
-                this.showAddContactModal();
-            });
-
-            // 添加场景按钮点击事件
-            document.querySelector('#scenarios .add-btn').addEventListener('click', () => {
-                this.showAddSceneModal();
-            });
-
-            // 表单提交事件
-            document.getElementById('addContactForm').addEventListener('submit', (e) => {
-                e.preventDefault();
-                this.handleAddContact();
-            });
-        }
-
-        showAddContactModal() {
-            const modal = document.getElementById('addContactModal');
-            modal.classList.add('active');
-        }
-
-        async handleAddContact() {
-            const formData = {
-                name: document.getElementById('contactName').value,
-                T_lang: document.getElementById('targetLang').value,
-                prompt: document.getElementById('contactPrompt').value,
-                voice_engine: document.getElementById('voiceEngine').value,
-            };
-
-            try {
-                // 发送到后端保存
-                const response = await fetch('/api/add_contact', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(formData)
-                });
-
-                if (response.ok) {
-                    // 添加新磁贴
-                    const contactsContainer = document.querySelector('#contacts .tiles-container');
-                    const tile = this.createContactTile(formData.name, formData);
-                    contactsContainer.appendChild(tile);
-                    
-                    // 重新初始化拖拽系统
-                    initTileSystem();
-                    
-                    // 关闭模态框
-                    document.getElementById('addContactModal').classList.remove('active');
-                } else {
-                    console.error('保存失败');
-                }
-            } catch (error) {
-                console.error('保存失败:', error);
-            }
         }
     }
 
@@ -1021,6 +1213,23 @@ document.addEventListener('DOMContentLoaded', function() {
             border-color: rgba(0, 0, 0, 0.5);
             background: rgba(0, 0, 0, 0.1);
         }
+
+        .tile-overlapping {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.5);
+            border: 2px solid var(--primary-color);
+        }
+
+        .tile-overlap-complete {
+            animation: overlap-flash 0.5s ease;
+        }
+
+        @keyframes overlap-flash {
+            0% { transform: scale(1.05); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1.05); }
+        }
+
     `;
     document.head.appendChild(style);
 });

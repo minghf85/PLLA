@@ -116,21 +116,65 @@ body {
 
 /* 主要内容区域样式 */
 .main-content {
-    margin-top: 60px;
-    padding: var(--gap-size);
-    display: grid;
-    grid-template-columns: 1fr 4px 1fr;
-    gap: 0;
-    min-height: calc(100vh - 60px);
-    background: var(--background-color);
-    transition: none;
-    width: 100%;
-    position: relative;
-    user-select: none;
+    flex: 1;
+    padding: 20px;
+    overflow: hidden;
+    height: calc(100vh - 60px); /* 减去顶部导航栏的高度 */
 }
 
-.main-content.sidebar-active {
-    transform: none;
+.tiles-section {
+    background: var(--background-color);
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.tiles-container {
+    flex: 1;
+    padding: 20px;
+    overflow: auto;
+    position: relative;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 120px);
+    grid-auto-rows: 120px;
+    gap: 10px;
+    align-content: start;
+}
+
+/* 添加滚动条样式 */
+.tiles-container::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.tiles-container::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+}
+
+.tiles-container::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+}
+
+.tiles-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.3);
+}
+
+/* 支持暗色主题 */
+[data-theme="dark"] .tiles-container::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .tiles-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="dark"] .tiles-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
 }
 
 .contacts-section, .scenarios-section {
@@ -158,20 +202,6 @@ body {
     margin-bottom: 15px;
     font-size: 1.5rem;
     text-shadow: none;
-}
-
-/* 磁贴容器样式 */
-.tiles-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: var(--gap-size);
-    padding: 10px;
-    position: relative;
-    min-height: 400px;
-    height: calc(100% - 60px); /* 减去header高度 */
-    background: rgba(0, 0, 0, 0.03);
-    border-radius: 8px;
-    overflow: auto;
 }
 
 /* 磁贴基础样式 */
