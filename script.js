@@ -278,7 +278,7 @@ document.addEventListener('DOMContentLoaded', function() {
             this.container = container;
             this.gridSize = 120;
             this.gap = 10;
-            this.gridMap = new Map(); // 存储网格位置和对应的磁贴
+            this.gridMap = new Map();
             this.overlappingTile = null;
             this.overlappingTimer = null;
             this.init();
@@ -421,17 +421,27 @@ document.addEventListener('DOMContentLoaded', function() {
             return null;
         }
 
-        // 更新磁贴位置，考虑磁贴大小
+        // 修改 updateTilePosition 方法
         updateTilePosition(tile, x, y) {
             const gridPos = this.getGridPosition(x, y);
             const size = this.getTileSize(tile);
             
-            // 移除旧位置的所有占用格子
-            this.gridMap.forEach((value, key) => {
-                if (value === tile) {
-                    this.gridMap.delete(key);
+            // 先移除旧位置的所有占用格子
+            this.removeTileFromGrid(tile);
+
+            // 检查新位置是否已被占用
+            for (let i = 0; i < size.w; i++) {
+                for (let j = 0; j < size.h; j++) {
+                    const checkX = gridPos.x + i * this.gridSize;
+                    const checkY = gridPos.y + j * this.gridSize;
+                    const key = `${checkX},${checkY}`;
+                    
+                    if (this.gridMap.has(key) && this.gridMap.get(key) !== tile) {
+                        // 如果位置被占用，不更新位置
+                        return false;
+                    }
                 }
-            });
+            }
 
             // 设置新位置的所有占用格子
             for (let i = 0; i < size.w; i++) {
@@ -442,6 +452,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             tile.style.transform = `translate3d(${gridPos.x}px, ${gridPos.y}px, 0)`;
+            return true;
         }
 
         // 获取磁贴大小（以网格单位计）
@@ -456,15 +467,31 @@ document.addEventListener('DOMContentLoaded', function() {
             const gridPos = this.getGridPosition(x, y);
             const size = this.getTileSize(tile);
 
+            // 检查目标区域的每个网格点
             for (let i = 0; i < size.w; i++) {
                 for (let j = 0; j < size.h; j++) {
-                    const key = `${gridPos.x + i * this.gridSize},${gridPos.y + j * this.gridSize}`;
+                    const checkX = gridPos.x + i * this.gridSize;
+                    const checkY = gridPos.y + j * this.gridSize;
+                    const key = `${checkX},${checkY}`;
+                    
                     const occupyingTile = this.gridMap.get(key);
                     if (occupyingTile && occupyingTile !== tile) {
+                        // 如果发现任何一个位置被其他磁贴占用，立即返回 false
                         return false;
                     }
                 }
             }
+
+            // 检查是否超出容器边界
+            const containerWidth = this.container.offsetWidth;
+            const containerHeight = this.container.offsetHeight;
+            
+            if (gridPos.x + size.w * this.gridSize > containerWidth ||
+                gridPos.y + size.h * this.gridSize > containerHeight ||
+                gridPos.x < 0 || gridPos.y < 0) {
+                return false;
+            }
+
             return true;
         }
 
@@ -525,19 +552,26 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // 修改初始化磁贴位置的方法
         initializeTilePosition(tile) {
-            // 找到一个可用的位置
-            let x = 0, y = 0;
-            const size = this.getTileSize(tile);
-            
-            while (!this.isPositionAvailable(x, y, tile)) {
-                x += this.gridSize;
-                if (x >= this.container.offsetWidth - this.gridSize) {
-                    x = 0;
-                    y += this.gridSize;
+            const transform = tile.style.transform;
+            if (transform) {
+                // 从transform中提取位置
+                const match = transform.match(/translate3d\((\d+)px,\s*(\d+)px/);
+                if (match) {
+                    const [_, x, y] = match;
+                    // 确保更新网格映射
+                    this.updateTilePosition(tile, parseInt(x), parseInt(y));
+                }
+            } else {
+                // 找到一个可用的位置
+                let x = 0, y = 0;
+                while (!this.updateTilePosition(tile, x, y)) {
+                    x += this.gridSize;
+                    if (x >= this.container.offsetWidth - this.gridSize) {
+                        x = 0;
+                        y += this.gridSize;
+                    }
                 }
             }
-            
-            this.updateTilePosition(tile, x, y);
         }
 
         // 修改重叠检测方法，添加柔性检测
@@ -967,16 +1001,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const grid = new TileGrid(container);
             const tiles = container.querySelectorAll('.tile');
 
+            // 首先初始化所有磁贴的位置
             tiles.forEach(tile => {
-                // 获取已保存的位置
-                const savedTransform = tile.style.transform;
-                const [x = 0, y = 0] = savedTransform
-                    ? savedTransform.match(/translate3d\((\d+)px,\s*(\d+)px/i)?.slice(1) || [0, 0]
-                    : [0, 0];
+                grid.initializeTilePosition(tile);
 
-                // 设置初始位置
-                tile.style.transform = `translate3d(${x}px, ${y}px, 0px)`;
-
+                // 为每个磁贴单独设置事件处理
                 let isDragging = false;
                 let isResizing = false;
                 let currentX, currentY;
@@ -984,7 +1013,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 let xOffset = 0;
                 let yOffset = 0;
 
-                // 鼠标事件处理
                 function handleDragStart(e) {
                     if (!e.target.closest('.tile-drag-handle')) return;
                     
@@ -994,7 +1022,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     xOffset = e.clientX - rect.left;
                     yOffset = e.clientY - rect.top;
                     
-                    // 记录初始位置
                     initialX = rect.left - containerRect.left;
                     initialY = rect.top - containerRect.top;
                     currentX = initialX;
@@ -1013,14 +1040,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     const newX = e.clientX - containerRect.left - xOffset;
                     const newY = e.clientY - containerRect.top - yOffset;
                     
-                    // 更新当前位置
                     currentX = newX;
                     currentY = newY;
                     
-                    // 显示预览网格
                     grid.showPreview(newX, newY, tile.offsetWidth, tile.offsetHeight);
-                    
-                    // 移动磁贴
                     tile.style.transform = `translate3d(${newX}px, ${newY}px, 0)`;
                 }
 
@@ -1035,50 +1058,18 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     const gridPos = grid.getGridPosition(currentX, currentY);
                     
-                    if (grid.isPositionAvailable(gridPos.x, gridPos.y, tile)) {
-                        grid.updateTilePosition(tile, gridPos.x, gridPos.y);
-                    } else {
+                    if (!grid.updateTilePosition(tile, gridPos.x, gridPos.y)) {
                         grid.updateTilePosition(tile, initialX, initialY);
                     }
                 }
 
-                // 检查重叠的辅助函数
-                function findOverlappingTile(dragTile, x, y) {
-                    const dragRect = {
-                        left: x,
-                        top: y,
-                        right: x + dragTile.offsetWidth,
-                        bottom: y + dragTile.offsetHeight
-                    };
-                    
-                    const tiles = Array.from(container.querySelectorAll('.tile'));
-                    
-                    for (const tile of tiles) {
-                        if (tile === dragTile) continue;
-                        
-                        const rect = tile.getBoundingClientRect();
-                        const containerRect = container.getBoundingClientRect();
-                        const tileRect = {
-                            left: rect.left - containerRect.left,
-                            top: rect.top - containerRect.top,
-                            right: rect.right - containerRect.left,
-                            bottom: rect.bottom - containerRect.top
-                        };
-                        
-                        // 检查重叠
-                        const overlap = !(dragRect.right < tileRect.left || 
-                                         dragRect.left > tileRect.right || 
-                                         dragRect.bottom < tileRect.top || 
-                                         dragRect.top > tileRect.bottom);
-                        
-                        if (overlap) return tile;
-                    }
-                    
-                    return null;
-                }
-
+                // 绑定事件到当前磁贴
+                tile.addEventListener('mousedown', handleDragStart);
+                document.addEventListener('mousemove', handleDragMove);
+                document.addEventListener('mouseup', handleDragEnd);
+                
                 // 触摸事件处理
-                function handleTouchStart(e) {
+                tile.addEventListener('touchstart', (e) => {
                     if (!e.target.closest('.tile-drag-handle')) return;
                     e.preventDefault();
                     
@@ -1088,9 +1079,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         clientY: touch.clientY,
                         target: e.target
                     });
-                }
+                }, { passive: false });
 
-                function handleTouchMove(e) {
+                document.addEventListener('touchmove', (e) => {
                     if (!isDragging) return;
                     e.preventDefault();
                     
@@ -1100,13 +1091,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         clientY: touch.clientY,
                         preventDefault: () => {}
                     });
-                }
+                }, { passive: false });
 
-                function handleTouchEnd(e) {
-                    handleDragEnd();
-                }
+                document.addEventListener('touchend', handleDragEnd);
 
-                // 调整大小处理
+                // 添加调整大小的事件处理
                 const resizeHandle = tile.querySelector('.tile-resize-handle');
                 if (resizeHandle) {
                     let startWidth, startHeight, startX, startY;
@@ -1149,6 +1138,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (grid.isPositionAvailable(matrix.m41, matrix.m42, tile)) {
                             tile.style.width = `${newWidth}px`;
                             tile.style.height = `${newHeight}px`;
+                            // 更新网格映射
+                            grid.updateTilePosition(tile, matrix.m41, matrix.m42);
                         } else {
                             // 如果新位置不可用，恢复原始大小
                             tile.dataset.size = oldSize;
@@ -1171,15 +1162,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     document.addEventListener('touchmove', e => handleResizeMove(e, true), { passive: false });
                     document.addEventListener('touchend', handleResizeEnd);
                 }
-
-                // 添加事件监听器
-                tile.addEventListener('mousedown', handleDragStart);
-                document.addEventListener('mousemove', handleDragMove);
-                document.addEventListener('mouseup', handleDragEnd);
-                
-                tile.addEventListener('touchstart', handleTouchStart, { passive: false });
-                document.addEventListener('touchmove', handleTouchMove, { passive: false });
-                document.addEventListener('touchend', handleTouchEnd);
             });
         });
     }

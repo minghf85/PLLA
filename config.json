@@ -12,9 +12,9 @@
                     "icon": "./assets/avatars/default_avatar.png",
                     "tile": {
                         "position": "translate3d(960px, 0px, 0px)",
-                        "size": "3x2",
-                        "width": "360px",
-                        "height": "240px"
+                        "size": "1x1",
+                        "width": "120px",
+                        "height": "120px"
                     }
                 },
                 "Alice": {
@@ -26,10 +26,10 @@
                     "voice_engine": "GPT_SoVits",
                     "icon": "./assets/avatars/default_avatar.png",
                     "tile": {
-                        "position": "translate3d(600px, 120px, 0px)",
-                        "size": "2x2",
+                        "position": "translate3d(840px, 360px, 0px)",
+                        "size": "2x3",
                         "width": "240px",
-                        "height": "240px"
+                        "height": "360px"
                     }
                 }
             },
@@ -39,7 +39,7 @@
                     "scene_prompt": "在咖啡厅中对话",
                     "scene_referance": "",
                     "tile": {
-                        "position": "translate3d(1560px, 0px, 0px)",
+                        "position": "translate3d(1200px, 120px, 0px)",
                         "size": "1x1",
                         "width": "120px",
                         "height": "120px"
@@ -72,7 +72,7 @@
                     "scene_prompt": "在医院中对话",
                     "scene_referance": "",
                     "tile": {
-                        "position": "translate3d(1440px, 0px, 0px)",
+                        "position": "translate3d(1200px, 360px, 0px)",
                         "size": "1x1",
                         "width": "120px",
                         "height": "120px"
@@ -138,7 +138,7 @@
                 },
                 "save": {
                     "tile": {
-                        "position": "translate3d(480px, 240px, 0px)",
+                        "position": "translate3d(600px, 240px, 0px)",
                         "size": "1x1",
                         "width": "120px",
                         "height": "120px"
