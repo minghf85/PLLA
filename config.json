@@ -72,10 +72,10 @@
                     "scene_prompt": "在医院中对话",
                     "scene_referance": "",
                     "tile": {
-                        "position": "translate3d(1200px, 360px, 0px)",
-                        "size": "1x1",
-                        "width": "120px",
-                        "height": "120px"
+                        "position": "translate3d(1080px, 240px, 0px)",
+                        "size": "2x2",
+                        "width": "240px",
+                        "height": "240px"
                     }
                 }
             },
@@ -147,10 +147,10 @@
             },
             "chat_tile": {
                 "tile": {
-                    "position": "translate3d(1560px, 240px, 0px)",
-                    "size": "6x6",
-                    "width": "720px",
-                    "height": "720px"
+                    "position": "translate3d(1440px, 240px, 0px)",
+                    "size": "5x5",
+                    "width": "600px",
+                    "height": "600px"
                 }
             }
         },

@@ -247,21 +247,54 @@ body {
     position: absolute;
     top: 4px;
     left: 4px;
-    width: 24px;
-    height: 24px;
-    background: rgba(0, 0, 0, 0.1);
-    border-radius: 4px;
+    width: 20px;
+    height: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: move;
     z-index: 10;
-    opacity: 0.6;
+    opacity: 0;
     transition: opacity 0.2s;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    color: var(--text-color);
 }
 
-.tile-drag-handle:hover {
-    opacity: 1;
+/* 鼠标靠近左上角时显示拖动手柄 */
+.tile:hover .tile-drag-handle {
+    opacity: 0;
+}
+
+.tile:hover .tile-drag-handle:hover,
+.tile:hover *:hover > .tile-drag-handle {
+    opacity: 0.8;
+    background: rgba(0, 0, 0, 0.1);
+}
+
+/* 鼠标靠近右下角时显示调整大小手柄 */
+.tile:hover .tile-resize-handle {
+    opacity: 0;
+}
+
+.tile:hover .tile-resize-handle:hover,
+.tile:hover *:hover > .tile-resize-handle {
+    opacity: 0.8;
+    background: rgba(0, 0, 0, 0.1);
+}
+
+/* 拖动或调整大小时保持手柄可见 */
+.tile.dragging .tile-drag-handle,
+.tile.resizing .tile-resize-handle {
+    opacity: 0.8 !important;
+    background: rgba(0, 0, 0, 0.1);
+}
+
+/* 为手柄添加悬停效果 */
+.tile-drag-handle:hover,
+.tile-resize-handle:hover {
+    opacity: 1 !important;
+    background: rgba(0, 0, 0, 0.15) !important;
 }
 
 .tile-resize-handle {
@@ -275,12 +308,11 @@ body {
     justify-content: center;
     cursor: se-resize;
     z-index: 10;
-    opacity: 0.6;
+    opacity: 0;
     transition: opacity 0.2s;
-}
-
-.tile-resize-handle:hover {
-    opacity: 1;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    color: var(--text-color);
 }
 
 .tile-content {
