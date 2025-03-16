@@ -716,3 +716,27 @@ body.dark-mode .theme-btn {
     color: white;
 }
 
+.save-btn {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 10px;
+    color: var(--primary-color);
+    transition: all 0.3s ease;
+}
+
+.save-btn:hover {
+    transform: scale(1.1);
+    color: var(--primary-dark);
+}
+
+.save-btn.saving {
+    animation: saving-spin 1s linear infinite;
+}
+
+@keyframes saving-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+

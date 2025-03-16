@@ -4,43 +4,145 @@
             "contact": {
                 "佐藤": {
                     "T_lang": "ja",
-                    "prompt": "......",
+                    "prompt": "你是一个日语学习伙伴，帮助我学习日语。",
                     "referance": "",
-                    "scene": "",
+                    "scene": "default",
                     "speed": 1.0,
                     "voice_engine": "RealtimeTTS",
-                    "icon": "./assets/avatars/default_avatar.png"
+                    "icon": "./assets/avatars/default_avatar.png",
+                    "tile": {
+                        "position": "translate3d(960px, 0px, 0px)",
+                        "size": "3x2",
+                        "width": "360px",
+                        "height": "240px"
+                    }
                 },
                 "Alice": {
                     "T_lang": "en",
-                    "prompt": "......",
+                    "prompt": "你是一个英语学习伙伴，帮助我学习英语。",
                     "referance": "",
-                    "scene": "",
+                    "scene": "default",
                     "speed": 1.0,
                     "voice_engine": "GPT_SoVits",
-                    "icon": "./assets/avatars/default_avatar.png"
+                    "icon": "./assets/avatars/default_avatar.png",
+                    "tile": {
+                        "position": "translate3d(600px, 120px, 0px)",
+                        "size": "2x2",
+                        "width": "240px",
+                        "height": "240px"
+                    }
                 }
             },
             "scene": {
                 "咖啡厅对话": {
                     "scene_name": "咖啡厅对话",
                     "scene_prompt": "在咖啡厅中对话",
-                    "scene_referance": ""
+                    "scene_referance": "",
+                    "tile": {
+                        "position": "translate3d(1560px, 0px, 0px)",
+                        "size": "1x1",
+                        "width": "120px",
+                        "height": "120px"
+                    }
                 },
                 "商务会议": {
                     "scene_name": "商务会议",
                     "scene_prompt": "在商务会议中对话",
-                    "scene_referance": ""
+                    "scene_referance": "",
+                    "tile": {
+                        "position": "translate3d(1680px, 0px, 0px)",
+                        "size": "1x1",
+                        "width": "120px",
+                        "height": "120px"
+                    }
                 },
                 "学校": {
                     "scene_name": "学校",
                     "scene_prompt": "在学校中对话",
-                    "scene_referance": ""
+                    "scene_referance": "",
+                    "tile": {
+                        "position": "translate3d(1800px, 0px, 0px)",
+                        "size": "1x1",
+                        "width": "120px",
+                        "height": "120px"
+                    }
                 },
                 "医院": {
                     "scene_name": "医院",
                     "scene_prompt": "在医院中对话",
-                    "scene_referance": ""
+                    "scene_referance": "",
+                    "tile": {
+                        "position": "translate3d(1440px, 0px, 0px)",
+                        "size": "1x1",
+                        "width": "120px",
+                        "height": "120px"
+                    }
+                }
+            },
+            "function_tiles": {
+                "menu": {
+                    "tile": {
+                        "position": "translate3d(480px, 0px, 0px)",
+                        "size": "1x1",
+                        "width": "120px",
+                        "height": "120px"
+                    }
+                },
+                "search": {
+                    "tile": {
+                        "position": "translate3d(720px, 0px, 0px)",
+                        "size": "1x1",
+                        "width": "120px",
+                        "height": "120px"
+                    }
+                },
+                "theme": {
+                    "tile": {
+                        "position": "translate3d(840px, 0px, 0px)",
+                        "size": "1x1",
+                        "width": "120px",
+                        "height": "120px"
+                    }
+                },
+                "add-contact": {
+                    "tile": {
+                        "position": "translate3d(0px, 0px, 0px)",
+                        "size": "1x1",
+                        "width": "120px",
+                        "height": "120px"
+                    }
+                },
+                "add-scenario": {
+                    "tile": {
+                        "position": "translate3d(120px, 0px, 0px)",
+                        "size": "1x1",
+                        "width": "120px",
+                        "height": "120px"
+                    }
+                },
+                "edit-contact": {
+                    "tile": {
+                        "position": "translate3d(240px, 0px, 0px)",
+                        "size": "1x1",
+                        "width": "120px",
+                        "height": "120px"
+                    }
+                },
+                "edit-scenario": {
+                    "tile": {
+                        "position": "translate3d(360px, 0px, 0px)",
+                        "size": "1x1",
+                        "width": "120px",
+                        "height": "120px"
+                    }
+                },
+                "save": {
+                    "tile": {
+                        "position": "translate3d(480px, 240px, 0px)",
+                        "size": "1x1",
+                        "width": "120px",
+                        "height": "120px"
+                    }
                 }
             }
         },
@@ -48,12 +150,36 @@
         "ja": {}
     },
     "Engine_config": {
-        "RealtimeTTS": {
-            "engine": "Kokoros"
+        "TTS": {
+            "RealtimeTTS": {
+                "engine": "Kokoros"
+            },
+            "GPT_SoVits": {
+                "host": "127.0.0.1",
+                "port": "6880"
+            }
         },
-        "GPT_SoVits": {
-            "host": "127.0.0.1",
-            "port": "6880"
+        "STT": {
+            "RealtimeSTT": {
+                "engine": "Kokoros"
+            }
+        }
+    },
+    "Agent_config": {
+        "ollama": {
+            "url": "http://127.0.0.1:11434",
+            "model": "llama3.1:8b",
+            "api_key": "ollama"
+        },
+        "openai": {
+            "url": "https://api.openai.com/v1",
+            "model": "gpt-4o-mini",
+            "api_key": ""
+        },
+        "deepseek": {
+            "url": "https://api.deepseek.com/v1",
+            "model": "deepseek-coder",
+            "api_key": "sk-de42a36fb5aa465b9d0de50c06d53e7b"
         }
     }
 }

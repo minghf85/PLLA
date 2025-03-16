@@ -341,28 +341,26 @@ document.addEventListener('DOMContentLoaded', function() {
                         
                         // 设置新的计时器
                         this.overlappingTimer = setTimeout(() => {
-                            console.log('预览框重叠超过2秒:', overlappingTile.dataset.tileId);
+                            console.log('预览框重叠超过1.2秒:', overlappingTile.dataset.tileId);
                             this.handleOverlapTimeout(draggedTile, overlappingTile);
-                        }, 2000);
+                        }, 1200);
                     }
                 }
             }
         }
 
         handleOverlapTimeout(draggedTile, targetTile) {
-            // 这里可以添加振动反馈
-            if (window.navigator.vibrate) {
-                window.navigator.vibrate(50);
+            // 检查是否是联系人拖入场景
+            if (draggedTile.classList.contains('contact-tile') && 
+                targetTile.classList.contains('scenario-tile')) {
+                
+                const contactTileInstance = tileInstances.get(draggedTile);
+                const scenarioTileInstance = tileInstances.get(targetTile);
+                
+                if (contactTileInstance && scenarioTileInstance) {
+                    contactTileInstance.handleSceneDrop(scenarioTileInstance);
+                }
             }
-            
-            // 添加视觉反馈
-            targetTile.classList.add('tile-overlap-complete');
-            setTimeout(() => targetTile.classList.remove('tile-overlap-complete'), 500);
-            
-            console.log('处理重叠超时:', {
-                dragged: draggedTile.dataset.tileId,
-                target: targetTile.dataset.tileId
-            });
         }
 
         hidePreview() {
@@ -606,7 +604,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // 基础磁贴类
+    // 添加一个全局的 Map 来存储磁贴实例
+    const tileInstances = new Map();
+
     class BaseTile {
         constructor(id, options = {}) {
             this.id = id;
@@ -617,8 +617,9 @@ document.addEventListener('DOMContentLoaded', function() {
             this.color = options.color || '#4a90e2';
             this.resizable = options.resizable !== false;
             this.element = this.createElement();
-            this.overlappingTimer = null;
-            this.bindBaseEvents();
+            
+            // 将实例存储到全局 Map 中
+            tileInstances.set(this.element, this);
         }
 
         createElement() {
@@ -716,26 +717,22 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             
             this.contact = data;
+            this.name = name;
             this.bindEvents();
         }
 
         bindEvents() {
-            this.element.addEventListener('click', () => this.onClick());
+            // 双击事件
+            this.element.addEventListener('dblclick', () => {
+                // 进入默认场景对话
+                window.location.href = `chat.html?contact=${this.name}&scene=default`;
+            });
         }
 
-        onClick() {
-            // 打开联系人详情
-            console.log('打开联系人:', this.contact);
-        }
-
-        onDoubleClick(e) {
-            console.log('编辑联系人:', this.contact);
-            // 实现联系人编辑界面
-        }
-
-        onOverlapTimeout() {
-            console.log('联系人磁贴重叠超时:', this.contact);
-            // 实现重叠处理逻辑
+        // 处理拖入场景
+        handleSceneDrop(sceneTile) {
+            const sceneName = sceneTile.scenario.scene_name;
+            window.location.href = `chat.html?contact=${this.name}&scene=${sceneName}`;
         }
     }
 
@@ -776,90 +773,103 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 功能磁贴类
     class FunctionTile extends BaseTile {
-        constructor(type, options = {}) {
-            const config = FunctionTile.getConfig(type);
-            super(`function_${type}`, {
-                ...config,
-                ...options,
-                size: '1x1',
-                resizable: false
-            });
-            
-            this.type = type;
-            this.bindEvents();
-        }
-
-        static getConfig(type) {
-            const configs = {
+        constructor(type) {
+            const config = {
                 menu: {
                     title: '菜单',
                     icon: 'fa-bars',
-                    color: '#9b59b6'
+                    color: '#3498db',
+                    action: () => {
+                        const sidebar = document.getElementById('sidebar');
+                        sidebar.classList.toggle('active');
+                        document.body.classList.toggle('sidebar-open');
+                    }
                 },
                 search: {
                     title: '搜索',
                     icon: 'fa-search',
-                    color: '#3498db'
+                    color: '#9b59b6',
+                    action: () => {
+                        console.log('搜索功能待实现');
+                        // TODO: 实现搜索功能
+                    }
                 },
                 theme: {
-                    title: '主题',
+                    title: '主题切换',
                     icon: 'fa-lightbulb',
-                    color: '#f1c40f'
+                    color: '#f1c40f',
+                    action: () => {
+                        const isDarkMode = document.body.classList.toggle('dark-mode');
+                        localStorage.setItem('darkMode', isDarkMode);
+                        const themeBtn = document.querySelector('.theme-btn');
+                        themeBtn.innerHTML = isDarkMode ? 
+                            '<i class="fas fa-sun"></i>' : 
+                            '<i class="fas fa-moon"></i>';
+                    }
                 },
                 'add-contact': {
                     title: '添加联系人',
                     icon: 'fa-user-plus',
-                    color: '#27ae60'
+                    color: '#2ecc71',
+                    action: () => {
+                        console.log('添加联系人功能待实现');
+                        // TODO: 实现添加联系人功能
+                    }
                 },
                 'add-scenario': {
                     title: '添加场景',
-                    icon: 'fa-plus',
-                    color: '#c0392b'
+                    icon: 'fa-plus-square',
+                    color: '#e74c3c',
+                    action: () => {
+                        console.log('添加场景功能待实现');
+                        // TODO: 实现添加场景功能
+                    }
                 },
                 'edit-contact': {
                     title: '编辑联系人',
                     icon: 'fa-user-edit',
-                    color: '#16a085'
+                    color: '#e67e22',
+                    action: () => {
+                        console.log('编辑联系人功能待实现');
+                        // TODO: 实现编辑联系人功能
+                    }
                 },
                 'edit-scenario': {
                     title: '编辑场景',
                     icon: 'fa-edit',
-                    color: '#d35400'
+                    color: '#1abc9c',
+                    action: () => {
+                        console.log('编辑场景功能待实现');
+                        // TODO: 实现编辑场景功能
+                    }
+                },
+                save: {
+                    title: '保存布局',
+                    icon: 'fa-save',
+                    color: '#34495e',
+                    action: saveAllTileStates
                 }
             };
-            return configs[type] || {};
+
+            const typeConfig = config[type];
+            super(`function_${type}`, {
+                title: typeConfig.title,
+                icon: typeConfig.icon,
+                color: typeConfig.color,
+                resizable: false
+            });
+
+            this.action = typeConfig.action;
+            this.bindEvents();
         }
 
         bindEvents() {
-            this.element.addEventListener('click', () => this.onClick());
-        }
-
-        onClick() {
-            switch (this.type) {
-                case 'menu':
-                    document.getElementById('sidebar').classList.toggle('active');
-                    break;
-                case 'theme':
-                    document.body.classList.toggle('dark-theme');
-                    break;
-                case 'search':
-                    // 实现搜索功能
-                    break;
-                case 'add-contact':
-                    // 实现添加联系人功能
-                    break;
-                case 'add-scenario':
-                    // 实现添加场景功能
-                    break;
-                case 'edit-contact':
-                    console.log('打开联系人编辑器');
-                    // 实现编辑联系人功能
-                    break;
-                case 'edit-scenario':
-                    console.log('打开场景编辑器');
-                    // 实现编辑场景功能
-                    break;
-            }
+            // 双击触发功能
+            this.element.addEventListener('dblclick', () => {
+                if (this.action) {
+                    this.action();
+                }
+            });
         }
     }
 
@@ -872,45 +882,74 @@ document.addEventListener('DOMContentLoaded', function() {
 
         async loadConfig() {
             try {
-                const response = await fetch('config.json');
+                const response = await fetch('/api/config');
                 this.config = await response.json();
-                this.generateTiles();
+                await this.generateTiles();
             } catch (error) {
                 console.error('加载配置文件失败:', error);
             }
         }
 
-        generateTiles() {
+        async generateTiles() {
             const container = document.querySelector('.tiles-container');
             container.innerHTML = '';
 
-            // 添加功能磁贴
-            const functionTiles = [
-                new FunctionTile('menu'),
-                new FunctionTile('search'),
-                new FunctionTile('theme'),
-                new FunctionTile('add-contact'),
-                new FunctionTile('add-scenario'),
-                new FunctionTile('edit-contact'),
-                new FunctionTile('edit-scenario')
+            // 创建所有磁贴
+            const allTiles = [
+                // 功能磁贴
+                ...Object.entries(this.config.Learn_config.zh.function_tiles || {})
+                    .map(([name, data]) => {
+                        const tile = new FunctionTile(name);
+                        if (data.tile) {
+                            // 应用保存的布局
+                            Object.assign(tile.element.style, {
+                                transform: data.tile.position,
+                                width: data.tile.width || '120px',
+                                height: data.tile.height || '120px'
+                            });
+                            tile.element.dataset.size = data.tile.size || '1x1';
+                        }
+                        return tile;
+                    }),
+
+                // 联系人磁贴
+                ...Object.entries(this.config.Learn_config.zh.contact || {})
+                    .map(([name, data]) => {
+                        const tile = new ContactTile(name, data);
+                        if (data.tile) {
+                            Object.assign(tile.element.style, {
+                                transform: data.tile.position,
+                                width: data.tile.width || '120px',
+                                height: data.tile.height || '120px'
+                            });
+                            tile.element.dataset.size = data.tile.size || '1x1';
+                        }
+                        return tile;
+                    }),
+
+                // 场景磁贴
+                ...Object.entries(this.config.Learn_config.zh.scene || {})
+                    .map(([name, data]) => {
+                        const tile = new ScenarioTile(name, data);
+                        if (data.tile) {
+                            Object.assign(tile.element.style, {
+                                transform: data.tile.position,
+                                width: data.tile.width || '120px',
+                                height: data.tile.height || '120px'
+                            });
+                            tile.element.dataset.size = data.tile.size || '1x1';
+                        }
+                        return tile;
+                    })
             ];
 
-            // 添加联系人磁贴
-            const contacts = this.config.Learn_config.zh.contact;
-            const contactTiles = Object.entries(contacts).map(
-                ([name, data]) => new ContactTile(name, data)
-            );
-
-            // 添加场景磁贴
-            const scenarios = this.config.Learn_config.zh.scene;
-            const scenarioTiles = Object.entries(scenarios).map(
-                ([name, data]) => new ScenarioTile(name, data)
-            );
-
-            // 将所有磁贴添加到容器
-            [...functionTiles, ...contactTiles, ...scenarioTiles].forEach(tile => {
+            // 将磁贴添加到容器
+            allTiles.forEach(tile => {
                 container.appendChild(tile.element);
             });
+
+            // 等待DOM更新
+            await new Promise(resolve => setTimeout(resolve, 0));
 
             // 初始化磁贴系统
             initTileSystem();
@@ -928,12 +967,16 @@ document.addEventListener('DOMContentLoaded', function() {
             const grid = new TileGrid(container);
             const tiles = container.querySelectorAll('.tile');
 
-            // 初始化所有磁贴位置
             tiles.forEach(tile => {
-                grid.initializeTilePosition(tile);
-            });
+                // 获取已保存的位置
+                const savedTransform = tile.style.transform;
+                const [x = 0, y = 0] = savedTransform
+                    ? savedTransform.match(/translate3d\((\d+)px,\s*(\d+)px/i)?.slice(1) || [0, 0]
+                    : [0, 0];
 
-            tiles.forEach(tile => {
+                // 设置初始位置
+                tile.style.transform = `translate3d(${x}px, ${y}px, 0px)`;
+
                 let isDragging = false;
                 let isResizing = false;
                 let currentX, currentY;
@@ -988,21 +1031,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     tile.classList.remove('dragging');
                     tile.style.zIndex = '';
                     
-                    // 隐藏预览网格
                     grid.hidePreview();
                     
-                    // 对齐到网格
                     const gridPos = grid.getGridPosition(currentX, currentY);
                     
-                    // 检查新位置是否可用
                     if (grid.isPositionAvailable(gridPos.x, gridPos.y, tile)) {
                         grid.updateTilePosition(tile, gridPos.x, gridPos.y);
                     } else {
-                        // 如果位置不可用，返回原始位置
                         grid.updateTilePosition(tile, initialX, initialY);
                     }
-                    
-                    saveTilePositions(container);
                 }
 
                 // 检查重叠的辅助函数
@@ -1122,7 +1159,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (!isResizing) return;
                         isResizing = false;
                         tile.classList.remove('resizing');
-                        saveTilePositions(container);
                     }
 
                     // 鼠标事件
@@ -1147,42 +1183,6 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
-
-    // 保存磁贴位置
-    function saveTilePositions(container) {
-        const positions = Array.from(container.querySelectorAll('.tile')).map(tile => ({
-            id: tile.dataset.tileId,
-            transform: tile.style.transform,
-            width: tile.style.width,
-            height: tile.style.height
-        }));
-        
-        const containerId = container.closest('section').id;
-        localStorage.setItem(`tilePositions_${containerId}`, JSON.stringify(positions));
-    }
-
-    // 加载保存的磁贴位置
-    function loadTilePositions() {
-        document.querySelectorAll('.tiles-container[data-sortable="true"]').forEach(container => {
-            const containerId = container.closest('section').id;
-            const savedPositions = localStorage.getItem(`tilePositions_${containerId}`);
-            
-            if (savedPositions) {
-                const positions = JSON.parse(savedPositions);
-                positions.forEach(pos => {
-                    const tile = container.querySelector(`[data-tile-id="${pos.id}"]`);
-                    if (tile) {
-                        tile.style.transform = pos.transform;
-                        tile.style.width = pos.width;
-                        tile.style.height = pos.height;
-                    }
-                });
-            }
-        });
-    }
-
-    initTileSystem();
-    loadTilePositions();
 
     // 添加文件夹相关的CSS样式
     const style = document.createElement('style');
@@ -1232,4 +1232,63 @@ document.addEventListener('DOMContentLoaded', function() {
 
     `;
     document.head.appendChild(style);
+
+    // 添加保存所有磁贴状态的函数
+    async function saveAllTileStates() {
+        const saveBtn = document.querySelector('.save-btn');
+        saveBtn.classList.add('saving');
+        
+        try {
+            const tiles = Array.from(document.querySelectorAll('.tile'));
+            const savePromises = tiles.map(tile => {
+                const tileInstance = tileInstances.get(tile);
+                if (tileInstance) {
+                    const state = {
+                        position: tile.style.transform,
+                        size: tile.dataset.size,
+                        width: tile.style.width,
+                        height: tile.style.height
+                    };
+
+                    return fetch('/api/tile/update', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            id: tileInstance.id,
+                            state: state
+                        })
+                    }).then(response => response.json());
+                }
+                return Promise.resolve();
+            });
+
+            const results = await Promise.all(savePromises);
+            const success = results.every(result => result && result.success);
+
+            if (success) {
+                // 显示成功提示
+                saveBtn.innerHTML = '<i class="fas fa-check"></i>';
+                setTimeout(() => {
+                    saveBtn.innerHTML = '<i class="fas fa-save"></i>';
+                }, 2000);
+            } else {
+                throw new Error('部分磁贴保存失败');
+            }
+        } catch (error) {
+            console.error('保存磁贴状态时出错:', error);
+            // 显示错误提示
+            saveBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
+            setTimeout(() => {
+                saveBtn.innerHTML = '<i class="fas fa-save"></i>';
+            }, 2000);
+        } finally {
+            saveBtn.classList.remove('saving');
+        }
+    }
+
+    // 在文档加载完成后绑定保存按钮事件
+    const saveBtn = document.querySelector('.save-btn');
+    saveBtn.addEventListener('click', saveAllTileStates);
 });

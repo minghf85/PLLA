@@ -10,12 +10,6 @@ class Config:
             with open('config.json', 'r', encoding='utf-8') as f:
                 self.config = json.load(f)
             return self.config
-        except FileNotFoundError:
-            print("错误：找不到config.json文件")
-            return {}
-        except json.JSONDecodeError:
-            print("错误：config.json文件格式不正确")
-            return {}
         except Exception as e:
             print(f"错误：读取配置文件时发生异常: {str(e)}")
             return {}
@@ -63,4 +57,28 @@ class Config:
             return self.save_config()
         except Exception as e:
             print(f"错误：添加场景时发生异常: {str(e)}")
+            return False
+
+    def update_tile_state(self, tile_id, state):
+        try:
+            # 解析磁贴ID来确定类型和名称
+            tile_type, name = tile_id.split('_', 1)
+            
+            # 立即更新配置
+            if tile_type == 'contact':
+                self.config['Learn_config']['zh']['contact'][name]['tile'] = state
+            elif tile_type == 'scenario':
+                self.config['Learn_config']['zh']['scene'][name]['tile'] = state
+            elif tile_type == 'function':
+                self.config['Learn_config']['zh']['function_tiles'][name]['tile'] = state
+            
+            # 立即写入文件
+            success = self.save_config()
+            if not success:
+                print("错误：保存配置文件失败")
+                return False
+            
+            return True
+        except Exception as e:
+            print(f"错误：更新磁贴状态时发生异常: {str(e)}")
             return False

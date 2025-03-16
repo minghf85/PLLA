@@ -1,4 +1,4 @@
-nicegui>=1.4.0
+langchain
 openai
 python-dotenv
 RealtimeTTS
