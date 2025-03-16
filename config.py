@@ -29,6 +29,9 @@ class Config:
     def get_engine_config(self):
         return self.config.get('Engine_config', {})
 
+    def get_chat_config(self):
+        return self.config.get('Learn_config', {}).get('chat', {}).get('chat_tile', {})
+
     def add_contact(self, lang, contact_data):
         try:
             contacts = self.config['Learn_config'][lang]['contact']
@@ -62,23 +65,44 @@ class Config:
     def update_tile_state(self, tile_id, state):
         try:
             # 解析磁贴ID来确定类型和名称
-            tile_type, name = tile_id.split('_', 1)
+            if tile_id == 'chat_tile':
+                # 更新聊天磁贴的状态
+                if 'chat_tile' not in self.config['Learn_config']['zh']:
+                    self.config['Learn_config']['zh']['chat_tile'] = {}
+                self.config['Learn_config']['zh']['chat_tile']['tile'] = state
+            else:
+                tile_type, name = tile_id.split('_', 1)
+                # 更新其他类型磁贴的状态
+                if tile_type == 'contact':
+                    self.config['Learn_config']['zh']['contact'][name]['tile'] = state
+                elif tile_type == 'scenario':
+                    self.config['Learn_config']['zh']['scene'][name]['tile'] = state
+                elif tile_type == 'function':
+                    self.config['Learn_config']['zh']['function_tiles'][name]['tile'] = state
             
-            # 立即更新配置
-            if tile_type == 'contact':
-                self.config['Learn_config']['zh']['contact'][name]['tile'] = state
-            elif tile_type == 'scenario':
-                self.config['Learn_config']['zh']['scene'][name]['tile'] = state
-            elif tile_type == 'function':
-                self.config['Learn_config']['zh']['function_tiles'][name]['tile'] = state
-            
-            # 立即写入文件
-            success = self.save_config()
-            if not success:
-                print("错误：保存配置文件失败")
-                return False
-            
-            return True
+            return self.save_config()
         except Exception as e:
             print(f"错误：更新磁贴状态时发生异常: {str(e)}")
             return False
+
+    def add_chat_tile(self, chat_data):
+        try:
+            chat_tile = {
+                'title': chat_data['title'],
+                'content': chat_data['content'],
+                'tile': {
+                    'position': chat_data['tile']['position'],
+                    'size': chat_data['tile']['size'],
+                    'width': chat_data['tile']['width'],
+                    'height': chat_data['tile']['height']
+                }
+            }
+            self.config['Learn_config']['zh']['chat']['chat_tile'] = chat_tile
+            return self.save_config()
+        except Exception as e:
+            print(f"错误：添加聊天磁贴时发生异常: {str(e)}")
+            return False
+
+    def get_chat_tile_config(self):
+        """获取聊天磁贴配置"""
+        return self.config.get('Learn_config', {}).get('zh', {}).get('chat_tile', {})

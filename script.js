@@ -654,6 +654,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // 将实例存储到全局 Map 中
             tileInstances.set(this.element, this);
+            this.bindEvents();
         }
 
         createElement() {
@@ -695,7 +696,7 @@ document.addEventListener('DOMContentLoaded', function() {
             this.element.dataset.size = `${Math.round(width/120)}x${Math.round(height/120)}`;
         }
 
-        bindBaseEvents() {
+        bindEvents() {
             // 双击事件
             this.element.addEventListener('dblclick', (e) => {
                 console.log('双击磁贴:', this.id);
@@ -907,6 +908,265 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // 修改 ContainerTile 类
+    class ContainerTile extends BaseTile {
+        constructor(id, options = {}) {
+            super(id, {
+                title: options.title || 'Container',
+                description: options.description || '',
+                icon: options.icon || 'fa-window-maximize',
+                color: options.color || '#3498db',
+                size: options.size || '1x1'
+            });
+
+            // 添加容器基本样式
+            const style = document.createElement('style');
+            style.textContent = `
+                .container-content {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    overflow: auto;
+                    background: var(--surface-color);
+                    border-radius: 8px;
+                    margin: 8px;
+                }
+
+                .container-content iframe {
+                    width: 100%;
+                    height: 100%;
+                    border: none;
+                }
+            `;
+            document.head.appendChild(style);
+
+            this.content = options.content || '';
+        }
+
+        createElement() {
+            const tile = super.createElement();
+            
+            // 创建内容容器
+            const contentContainer = document.createElement('div');
+            contentContainer.className = 'container-content';
+            contentContainer.innerHTML = this.content;
+            
+            // 添加到磁贴中，确保不覆盖原有内容
+            tile.appendChild(contentContainer);
+            
+            // 确保拖拽手柄在最上层
+            const dragHandle = tile.querySelector('.tile-drag-handle');
+            const resizeHandle = tile.querySelector('.tile-resize-handle');
+            if (dragHandle) tile.appendChild(dragHandle);
+            if (resizeHandle) tile.appendChild(resizeHandle);
+            
+            return tile;
+        }
+
+        // 更新内容的方法
+        updateContent(newContent) {
+            this.content = newContent;
+            const contentContainer = this.element.querySelector('.container-content');
+            if (contentContainer) {
+                contentContainer.innerHTML = this.content;
+            }
+        }
+
+        // 加载URL的方法
+        loadURL(url) {
+            this.updateContent(`<iframe src="${url}" frameborder="0"></iframe>`);
+        }
+    }
+
+    // 修改 ChatTile 类
+    class ChatTile extends ContainerTile {
+        constructor(id, options = {}) {
+            // 确保初始尺寸至少是 4x4
+            const size = '4x4';
+            super(id, {
+                ...options,
+                size: size,
+                color: '#3498db',
+                icon: 'fa-comments'
+            });
+
+            // 修改聊天界面样式
+            const style = document.createElement('style');
+            style.textContent = `
+                .chat-container {
+                    display: flex;
+                    flex-direction: column;
+                    height: 100%;
+                    background: var(--background-color);
+                    border-radius: 8px;
+                    overflow: hidden;
+                }
+
+                .chat-messages {
+                    flex: 1;
+                    padding: 16px;
+                    overflow-y: auto;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                    background: var(--background-color);
+                }
+
+                .chat-input-area {
+                    padding: 12px;
+                    background: var(--surface-color);
+                    border-top: 1px solid var(--border-color);
+                    display: flex;
+                    gap: 8px;
+                    margin-top: auto;
+                }
+
+                .chat-input {
+                    flex: 1;
+                    padding: 8px 16px;
+                    border: 1px solid var(--border-color);
+                    border-radius: 20px;
+                    background: var(--background-color);
+                    color: var(--text-color);
+                }
+
+                .send-btn {
+                    padding: 8px 16px;
+                    background: var(--primary-color);
+                    color: white;
+                    border: none;
+                    border-radius: 20px;
+                    cursor: pointer;
+                }
+
+                .message {
+                    padding: 8px 12px;
+                    border-radius: 12px;
+                    max-width: 80%;
+                    word-break: break-word;
+                }
+
+                .message.sent {
+                    background: var(--primary-color);
+                    color: white;
+                    margin-left: auto;
+                    border-bottom-right-radius: 4px;
+                }
+
+                .message.received {
+                    background: var(--surface-color);
+                    color: var(--text-color);
+                    margin-right: auto;
+                    border-bottom-left-radius: 4px;
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        createElement() {
+            const tile = super.createElement();
+            
+            // 设置最小尺寸
+            tile.style.minWidth = '480px';  // 4 * 120px
+            tile.style.minHeight = '480px'; // 4 * 120px
+            
+            // 更新内容，确保内容在 container-content 内
+            const contentContainer = tile.querySelector('.container-content');
+            if (contentContainer) {
+                contentContainer.innerHTML = `
+                    <div class="chat-container">
+                        <div class="chat-messages"></div>
+                        <div class="chat-input-area">
+                            <input type="text" class="chat-input" placeholder="输入消息...">
+                            <button class="send-btn">
+                                <i class="fas fa-paper-plane"></i>
+                                发送
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            this.bindChatEvents(tile);
+            return tile;
+        }
+
+        bindChatEvents(tile) {
+            const input = tile.querySelector('.chat-input');
+            const sendBtn = tile.querySelector('.send-btn');
+            const messagesContainer = tile.querySelector('.chat-messages');
+
+            // 发送消息的函数
+            const sendMessage = () => {
+                const message = input.value.trim();
+                if (message) {
+                    this.addMessage(message, 'sent');
+                    input.value = '';
+                    
+                    // 模拟接收消息
+                    setTimeout(() => {
+                        this.addMessage('这是一个自动回复消息', 'received');
+                    }, 1000);
+                }
+            };
+
+            // 绑定发送按钮点击事件
+            sendBtn.addEventListener('click', sendMessage);
+
+            // 绑定回车键发送事件
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+
+            // 阻止输入框的冒泡，避免触发磁贴的拖动
+            input.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+            });
+        }
+
+        addMessage(text, type = 'sent') {
+            const messagesContainer = this.element.querySelector('.chat-messages');
+            const messageElement = document.createElement('div');
+            messageElement.className = `message ${type}`;
+            messageElement.textContent = text;
+            messagesContainer.appendChild(messageElement);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // 重写 setSize 方法以确保最小尺寸
+        setSize(width, height) {
+            const minWidth = 480;  // 4 * 120px
+            const minHeight = 480; // 4 * 120px
+            
+            const finalWidth = Math.max(width, minWidth);
+            const finalHeight = Math.max(height, minHeight);
+            
+            // 更新 dataset.size 以反映实际大小
+            const sizeW = Math.max(4, Math.round(finalWidth / 120));
+            const sizeH = Math.max(4, Math.round(finalHeight / 120));
+            this.element.dataset.size = `${sizeW}x${sizeH}`;
+            
+            // 设置样式
+            this.element.style.width = `${finalWidth}px`;
+            this.element.style.height = `${finalHeight}px`;
+        }
+
+        // 添加验证尺寸的方法
+        validateSize() {
+            const width = parseInt(this.element.style.width);
+            const height = parseInt(this.element.style.height);
+            if (width < 480 || height < 480) {
+                this.setSize(width, height); // 这将强制应用最小尺寸
+                return false;
+            }
+            return true;
+        }
+    }
+
     // 修改 TileManager 类
     class TileManager {
         constructor() {
@@ -974,7 +1234,28 @@ document.addEventListener('DOMContentLoaded', function() {
                             tile.element.dataset.size = data.tile.size || '1x1';
                         }
                         return tile;
-                    })
+                    }),
+
+                // 聊天磁贴
+                (() => {
+                    const chatTileConfig = this.config.Learn_config.zh.chat_tile;
+                    const chatTile = new ChatTile('chat_tile', {
+                        title: '聊天',
+                        size: '4x4'
+                    });
+                    
+                    // 应用保存的布局
+                    if (chatTileConfig && chatTileConfig.tile) {
+                        Object.assign(chatTile.element.style, {
+                            transform: chatTileConfig.tile.position,
+                            width: chatTileConfig.tile.width,
+                            height: chatTileConfig.tile.height
+                        });
+                        chatTile.element.dataset.size = chatTileConfig.tile.size;
+                    }
+                    
+                    return chatTile;
+                })()
             ];
 
             // 将磁贴添加到容器
@@ -1121,10 +1402,17 @@ document.addEventListener('DOMContentLoaded', function() {
                         const deltaX = point.clientX - startX;
                         const deltaY = point.clientY - startY;
                         
-                        const newWidth = Math.max(grid.gridSize, 
+                        let newWidth = Math.max(grid.gridSize, 
                             Math.round((startWidth + deltaX) / grid.gridSize) * grid.gridSize);
-                        const newHeight = Math.max(grid.gridSize, 
+                        let newHeight = Math.max(grid.gridSize, 
                             Math.round((startHeight + deltaY) / grid.gridSize) * grid.gridSize);
+
+                        // 如果是聊天磁贴，强制执行最小尺寸限制
+                        const tileInstance = tileInstances.get(tile);
+                        if (tileInstance instanceof ChatTile) {
+                            newWidth = Math.max(newWidth, 480);  // 4 * 120px
+                            newHeight = Math.max(newHeight, 480); // 4 * 120px
+                        }
 
                         const currentTransform = window.getComputedStyle(tile).transform;
                         const matrix = new DOMMatrix(currentTransform);
@@ -1225,6 +1513,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const savePromises = tiles.map(tile => {
                 const tileInstance = tileInstances.get(tile);
                 if (tileInstance) {
+                    // 如果是聊天磁贴，先验证尺寸
+                    if (tileInstance instanceof ChatTile) {
+                        tileInstance.validateSize();
+                    }
+
                     const state = {
                         position: tile.style.transform,
                         size: tile.dataset.size,
@@ -1232,15 +1525,27 @@ document.addEventListener('DOMContentLoaded', function() {
                         height: tile.style.height
                     };
 
+                    // 根据磁贴类型构建不同的请求体
+                    let requestBody;
+                    if (tileInstance instanceof ChatTile) {
+                        requestBody = {
+                            id: tileInstance.id,
+                            type: 'chat_tile',
+                            state: state
+                        };
+                    } else {
+                        requestBody = {
+                            id: tileInstance.id,
+                            state: state
+                        };
+                    }
+
                     return fetch('/api/tile/update', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
-                        body: JSON.stringify({
-                            id: tileInstance.id,
-                            state: state
-                        })
+                        body: JSON.stringify(requestBody)
                     }).then(response => response.json());
                 }
                 return Promise.resolve();
@@ -1250,7 +1555,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const success = results.every(result => result && result.success);
 
             if (success) {
-                // 显示成功提示
                 saveBtn.innerHTML = '<i class="fas fa-check"></i>';
                 setTimeout(() => {
                     saveBtn.innerHTML = '<i class="fas fa-save"></i>';
@@ -1260,7 +1564,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         } catch (error) {
             console.error('保存磁贴状态时出错:', error);
-            // 显示错误提示
             saveBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
             setTimeout(() => {
                 saveBtn.innerHTML = '<i class="fas fa-save"></i>';

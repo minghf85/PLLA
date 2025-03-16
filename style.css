@@ -207,20 +207,14 @@ body {
 /* 磁贴基础样式 */
 .tile {
     position: absolute;
-    cursor: move;
+    width: 120px;
+    height: 120px;
     background: var(--surface-color);
     border-radius: 12px;
-    padding: 15px;
-    text-align: center;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
     transition: transform 0.2s, box-shadow 0.2s;
     user-select: none;
-    width: 120px;
-    height: 120px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    cursor: default;
 }
 
 /* 拖动时的效果 */
@@ -253,47 +247,70 @@ body {
     position: absolute;
     top: 4px;
     left: 4px;
-    width: 16px;
-    height: 16px;
+    width: 24px;
+    height: 24px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
-    opacity: 0;
-    transition: opacity 0.2s;
     cursor: move;
-    font-size: 0.8rem;
-    background: rgba(0, 0, 0, 0.1);
-    border-radius: 3px;
     z-index: 10;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.tile-drag-handle:hover {
+    opacity: 1;
 }
 
 .tile-resize-handle {
     position: absolute;
-    bottom: 4px;
     right: 4px;
-    width: 16px;
-    height: 16px;
+    bottom: 4px;
+    width: 20px;
+    height: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
-    opacity: 0;
-    transition: opacity 0.2s;
     cursor: se-resize;
-    font-size: 0.8rem;
-    background: rgba(0, 0, 0, 0.1);
-    border-radius: 3px;
     z-index: 10;
-}
-
-.tile:hover .tile-drag-handle,
-.tile:hover .tile-resize-handle {
     opacity: 0.6;
+    transition: opacity 0.2s;
 }
 
-.tile:hover .tile-drag-handle:hover,
-.tile:hover .tile-resize-handle:hover {
+.tile-resize-handle:hover {
     opacity: 1;
-    background: rgba(0, 0, 0, 0.2);
+}
+
+.tile-content {
+    height: 100%;
+    padding: 8px;
+    padding-top: 32px; /* 为拖动手柄留出空间 */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.tile-icon {
+    font-size: 24px;
+    margin-bottom: 8px;
+}
+
+.tile-info {
+    text-align: center;
+}
+
+.tile-info h3 {
+    font-size: 14px;
+    margin: 0 0 4px 0;
+}
+
+.tile-info p {
+    font-size: 12px;
+    margin: 0;
+    opacity: 0.8;
 }
 
 /* 磁贴大小预设 */

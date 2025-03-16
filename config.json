@@ -27,9 +27,9 @@
                     "icon": "./assets/avatars/default_avatar.png",
                     "tile": {
                         "position": "translate3d(840px, 360px, 0px)",
-                        "size": "2x3",
-                        "width": "240px",
-                        "height": "360px"
+                        "size": "1x1",
+                        "width": "120px",
+                        "height": "120px"
                     }
                 }
             },
@@ -39,7 +39,7 @@
                     "scene_prompt": "在咖啡厅中对话",
                     "scene_referance": "",
                     "tile": {
-                        "position": "translate3d(1200px, 120px, 0px)",
+                        "position": "translate3d(480px, 600px, 0px)",
                         "size": "1x1",
                         "width": "120px",
                         "height": "120px"
@@ -143,6 +143,14 @@
                         "width": "120px",
                         "height": "120px"
                     }
+                }
+            },
+            "chat_tile": {
+                "tile": {
+                    "position": "translate3d(1560px, 240px, 0px)",
+                    "size": "6x6",
+                    "width": "720px",
+                    "height": "720px"
                 }
             }
         },
