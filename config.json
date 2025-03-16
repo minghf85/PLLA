@@ -1,6 +1,10 @@
 {
     "Learn_config": {
         "zh": {
+            "grid_config": {
+                "tile_size": 200,
+                "gap_size": 10
+            },
             "contact": {
                 "佐藤": {
                     "T_lang": "ja",
@@ -12,9 +16,7 @@
                     "icon": "./assets/avatars/default_avatar.png",
                     "tile": {
                         "position": "translate3d(960px, 0px, 0px)",
-                        "size": "1x1",
-                        "width": "120px",
-                        "height": "120px"
+                        "size": "1x1"
                     }
                 },
                 "Alice": {
@@ -26,10 +28,8 @@
                     "voice_engine": "GPT_SoVits",
                     "icon": "./assets/avatars/default_avatar.png",
                     "tile": {
-                        "position": "translate3d(840px, 360px, 0px)",
-                        "size": "1x1",
-                        "width": "120px",
-                        "height": "120px"
+                        "position": "translate3d(840px, 240px, 0px)",
+                        "size": "1x1"
                     }
                 }
             },
@@ -40,9 +40,7 @@
                     "scene_referance": "",
                     "tile": {
                         "position": "translate3d(480px, 600px, 0px)",
-                        "size": "1x1",
-                        "width": "120px",
-                        "height": "120px"
+                        "size": "1x1"
                     }
                 },
                 "商务会议": {
@@ -50,10 +48,8 @@
                     "scene_prompt": "在商务会议中对话",
                     "scene_referance": "",
                     "tile": {
-                        "position": "translate3d(1680px, 0px, 0px)",
-                        "size": "1x1",
-                        "width": "120px",
-                        "height": "120px"
+                        "position": "translate3d(1560px, 0px, 0px)",
+                        "size": "1x1"
                     }
                 },
                 "学校": {
@@ -61,10 +57,8 @@
                     "scene_prompt": "在学校中对话",
                     "scene_referance": "",
                     "tile": {
-                        "position": "translate3d(1800px, 0px, 0px)",
-                        "size": "1x1",
-                        "width": "120px",
-                        "height": "120px"
+                        "position": "translate3d(1080px, 120px, 0px)",
+                        "size": "1x1"
                     }
                 },
                 "医院": {
@@ -72,10 +66,8 @@
                     "scene_prompt": "在医院中对话",
                     "scene_referance": "",
                     "tile": {
-                        "position": "translate3d(1080px, 240px, 0px)",
-                        "size": "2x2",
-                        "width": "240px",
-                        "height": "240px"
+                        "position": "translate3d(840px, 480px, 0px)",
+                        "size": "2x2"
                     }
                 }
             },
@@ -83,74 +75,56 @@
                 "menu": {
                     "tile": {
                         "position": "translate3d(480px, 0px, 0px)",
-                        "size": "1x1",
-                        "width": "120px",
-                        "height": "120px"
+                        "size": "1x1"
                     }
                 },
                 "search": {
                     "tile": {
                         "position": "translate3d(720px, 0px, 0px)",
-                        "size": "1x1",
-                        "width": "120px",
-                        "height": "120px"
+                        "size": "1x1"
                     }
                 },
                 "theme": {
                     "tile": {
                         "position": "translate3d(840px, 0px, 0px)",
-                        "size": "1x1",
-                        "width": "120px",
-                        "height": "120px"
+                        "size": "1x1"
                     }
                 },
                 "add-contact": {
                     "tile": {
                         "position": "translate3d(0px, 0px, 0px)",
-                        "size": "1x1",
-                        "width": "120px",
-                        "height": "120px"
+                        "size": "1x1"
                     }
                 },
                 "add-scenario": {
                     "tile": {
                         "position": "translate3d(120px, 0px, 0px)",
-                        "size": "1x1",
-                        "width": "120px",
-                        "height": "120px"
+                        "size": "1x1"
                     }
                 },
                 "edit-contact": {
                     "tile": {
                         "position": "translate3d(240px, 0px, 0px)",
-                        "size": "1x1",
-                        "width": "120px",
-                        "height": "120px"
+                        "size": "1x1"
                     }
                 },
                 "edit-scenario": {
                     "tile": {
                         "position": "translate3d(360px, 0px, 0px)",
-                        "size": "1x1",
-                        "width": "120px",
-                        "height": "120px"
+                        "size": "1x1"
                     }
                 },
                 "save": {
                     "tile": {
                         "position": "translate3d(600px, 240px, 0px)",
-                        "size": "1x1",
-                        "width": "120px",
-                        "height": "120px"
+                        "size": "1x1"
                     }
                 }
             },
             "chat_tile": {
                 "tile": {
-                    "position": "translate3d(1440px, 240px, 0px)",
-                    "size": "5x5",
-                    "width": "600px",
-                    "height": "600px"
+                    "position": "translate3d(1320px, 240px, 0px)",
+                    "size": "5x5"
                 }
             }
         },

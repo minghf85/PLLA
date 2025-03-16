@@ -62,17 +62,28 @@ class Config:
             print(f"错误：添加场景时发生异常: {str(e)}")
             return False
 
+    def get_grid_config(self, lang='zh'):
+        """获取网格配置"""
+        return self.config.get('Learn_config', {}).get(lang, {}).get('grid_config', {
+            'tile_size': 120,
+            'gap_size': 10
+        })
+
     def update_tile_state(self, tile_id, state):
+        """更新磁贴状态"""
         try:
-            # 解析磁贴ID来确定类型和名称
+            # 移除width和height，只保留position和size
+            state = {
+                'position': state.get('position'),
+                'size': state.get('size')
+            }
+            
             if tile_id == 'chat_tile':
-                # 更新聊天磁贴的状态
                 if 'chat_tile' not in self.config['Learn_config']['zh']:
                     self.config['Learn_config']['zh']['chat_tile'] = {}
                 self.config['Learn_config']['zh']['chat_tile']['tile'] = state
             else:
                 tile_type, name = tile_id.split('_', 1)
-                # 更新其他类型磁贴的状态
                 if tile_type == 'contact':
                     self.config['Learn_config']['zh']['contact'][name]['tile'] = state
                 elif tile_type == 'scenario':

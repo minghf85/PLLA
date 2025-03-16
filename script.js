@@ -806,95 +806,100 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // 功能磁贴类
-    class FunctionTile extends BaseTile {
-        constructor(type) {
-            const config = {
-                menu: {
-                    title: '菜单',
-                    icon: 'fa-bars',
-                    color: '#3498db',
-                    action: () => {
-                        const sidebar = document.getElementById('sidebar');
-                        sidebar.classList.toggle('active');
-                        document.body.classList.toggle('sidebar-open');
-                    }
-                },
-                search: {
-                    title: '搜索',
-                    icon: 'fa-search',
-                    color: '#9b59b6',
-                    action: () => {
-                        console.log('搜索功能待实现');
-                        // TODO: 实现搜索功能
-                    }
-                },
-                theme: {
-                    title: '主题切换',
-                    icon: 'fa-lightbulb',
-                    color: '#f1c40f',
-                    action: () => {
-                        const isDarkMode = document.body.classList.toggle('dark-mode');
-                        localStorage.setItem('darkMode', isDarkMode);
-                        const themeBtn = document.querySelector('.theme-btn');
-                        themeBtn.innerHTML = isDarkMode ? 
-                            '<i class="fas fa-sun"></i>' : 
-                            '<i class="fas fa-moon"></i>';
-                    }
-                },
-                'add-contact': {
-                    title: '添加联系人',
-                    icon: 'fa-user-plus',
-                    color: '#2ecc71',
-                    action: () => {
-                        console.log('添加联系人功能待实现');
-                        // TODO: 实现添加联系人功能
-                    }
-                },
-                'add-scenario': {
-                    title: '添加场景',
-                    icon: 'fa-plus-square',
-                    color: '#e74c3c',
-                    action: () => {
-                        console.log('添加场景功能待实现');
-                        // TODO: 实现添加场景功能
-                    }
-                },
-                'edit-contact': {
-                    title: '编辑联系人',
-                    icon: 'fa-user-edit',
-                    color: '#e67e22',
-                    action: () => {
-                        console.log('编辑联系人功能待实现');
-                        // TODO: 实现编辑联系人功能
-                    }
-                },
-                'edit-scenario': {
-                    title: '编辑场景',
-                    icon: 'fa-edit',
-                    color: '#1abc9c',
-                    action: () => {
-                        console.log('编辑场景功能待实现');
-                        // TODO: 实现编辑场景功能
-                    }
-                },
-                save: {
-                    title: '保存布局',
-                    icon: 'fa-save',
-                    color: '#34495e',
-                    action: saveAllTileStates
-                }
-            };
+    // 修改功能配置对象
+    const config = {
+        menu: {
+            title: '菜单',
+            icon: 'fa-bars',
+            color: '#3498db',
+            action: () => {
+                const sidebar = document.getElementById('sidebar');
+                sidebar.classList.toggle('active');
+                document.body.classList.toggle('sidebar-open');
+            }
+        },
+        search: {
+            title: '搜索',
+            icon: 'fa-search',
+            color: '#9b59b6',
+            action: () => {
+                console.log('搜索功能待实现');
+                // TODO: 实现搜索功能
+            }
+        },
+        theme: {
+            title: '主题切换',
+            icon: 'fa-lightbulb',
+            color: '#f1c40f',
+            action: () => {
+                const isDarkMode = document.body.classList.toggle('dark-mode');
+                localStorage.setItem('darkMode', isDarkMode);
+                const themeBtn = document.querySelector('.theme-btn');
+                themeBtn.innerHTML = isDarkMode ? 
+                    '<i class="fas fa-sun"></i>' : 
+                    '<i class="fas fa-moon"></i>';
+            }
+        },
+        'add-contact': {
+            title: '添加联系人',
+            icon: 'fa-user-plus',
+            color: '#2ecc71',
+            action: () => {
+                console.log('添加联系人功能待实现');
+                // TODO: 实现添加联系人功能
+            }
+        },
+        'add-scenario': {
+            title: '添加场景',
+            icon: 'fa-plus-square',
+            color: '#e74c3c',
+            action: () => {
+                console.log('添加场景功能待实现');
+                // TODO: 实现添加场景功能
+            }
+        },
+        'edit-contact': {
+            title: '编辑联系人',
+            icon: 'fa-user-edit',
+            color: '#e67e22',
+            action: () => {
+                console.log('编辑联系人功能待实现');
+                // TODO: 实现编辑联系人功能
+            }
+        },
+        'edit-scenario': {
+            title: '编辑场景',
+            icon: 'fa-edit',
+            color: '#1abc9c',
+            action: () => {
+                console.log('编辑场景功能待实现');
+                // TODO: 实现编辑场景功能
+            }
+        },
+        save: {
+            title: '保存布局',
+            icon: 'fa-save',
+            color: '#34495e',
+            action: saveAllTileStates
+        }
+    };
 
-            const typeConfig = config[type];
-            super(`function_${type}`, {
-                title: typeConfig.title,
-                icon: typeConfig.icon,
-                color: typeConfig.color,
-                resizable: false
+    // 修改 FunctionTile 类的构造函数
+    class FunctionTile extends BaseTile {
+        constructor(id) {
+            const functionConfig = config[id];
+            if (!functionConfig) {
+                throw new Error(`未找到功能配置: ${id}`);
+            }
+
+            super(id, {
+                title: functionConfig.title,
+                icon: functionConfig.icon,
+                color: functionConfig.color,
+                description: ''
             });
 
-            this.action = typeConfig.action;
+            this.action = functionConfig.action;
             this.bindEvents();
         }
 
@@ -1171,6 +1176,7 @@ document.addEventListener('DOMContentLoaded', function() {
     class TileManager {
         constructor() {
             this.config = null;
+            this.gridConfig = null;
             this.loadConfig();
         }
 
@@ -1178,15 +1184,33 @@ document.addEventListener('DOMContentLoaded', function() {
             try {
                 const response = await fetch('/api/config');
                 this.config = await response.json();
+                // 确保使用正确的网格配置
+                this.gridConfig = this.config.Learn_config.zh.grid_config || {
+                    tile_size: 120,
+                    gap_size: 10
+                };
                 await this.generateTiles();
             } catch (error) {
-                console.error('加载配置文件失败:', error);
+                console.error('加载配置失败:', error);
             }
+        }
+
+        calculateTileSize(size) {
+            const [w, h] = size.split('x').map(Number);
+            return {
+                width: w * this.gridConfig.tile_size + (w - 1) * this.gridConfig.gap_size,
+                height: h * this.gridConfig.tile_size + (h - 1) * this.gridConfig.gap_size
+            };
         }
 
         async generateTiles() {
             const container = document.querySelector('.tiles-container');
             container.innerHTML = '';
+
+            // 更新容器的网格样式
+            container.style.gridTemplateColumns = `repeat(auto-fill, ${this.gridConfig.tile_size}px)`;
+            container.style.gridAutoRows = `${this.gridConfig.tile_size}px`;
+            container.style.gap = `${this.gridConfig.gap_size}px`;
 
             // 创建所有磁贴
             const allTiles = [
