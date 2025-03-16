@@ -813,9 +813,18 @@ document.addEventListener('DOMContentLoaded', function() {
             icon: 'fa-bars',
             color: '#3498db',
             action: () => {
+                // 只更新磁贴对应的侧边栏状态
                 const sidebar = document.getElementById('sidebar');
-                sidebar.classList.toggle('active');
-                document.body.classList.toggle('sidebar-open');
+                if (sidebar && !sidebar.classList.contains('transitioning')) {
+                    sidebar.classList.add('transitioning');
+                    sidebar.classList.toggle('active');
+                    document.body.classList.toggle('sidebar-open');
+                    
+                    // 移除过渡标记
+                    setTimeout(() => {
+                        sidebar.classList.remove('transitioning');
+                    }, 300); // 与CSS过渡时间相匹配
+                }
             }
         },
         search: {
@@ -832,12 +841,32 @@ document.addEventListener('DOMContentLoaded', function() {
             icon: 'fa-lightbulb',
             color: '#f1c40f',
             action: () => {
-                const isDarkMode = document.body.classList.toggle('dark-mode');
-                localStorage.setItem('darkMode', isDarkMode);
-                const themeBtn = document.querySelector('.theme-btn');
-                themeBtn.innerHTML = isDarkMode ? 
-                    '<i class="fas fa-sun"></i>' : 
-                    '<i class="fas fa-moon"></i>';
+                // 添加过渡状态检查，避免快速重复切换
+                if (!document.body.classList.contains('theme-transitioning')) {
+                    document.body.classList.add('theme-transitioning');
+                    
+                    // 切换主题
+                    const isDarkMode = document.body.classList.toggle('dark-mode');
+                    localStorage.setItem('darkMode', isDarkMode);
+                    
+                    // 更新所有主题相关图标
+                    const themeTileIcon = document.querySelector('.tile[data-tile-id="theme"] .tile-icon i');
+                    const themeBtn = document.querySelector('.theme-btn');
+                    
+                    // 同步更新图标
+                    const newIconClass = isDarkMode ? 'fas fa-sun' : 'fas fa-moon';
+                    if (themeTileIcon) {
+                        themeTileIcon.className = newIconClass;
+                    }
+                    if (themeBtn) {
+                        themeBtn.innerHTML = `<i class="${newIconClass}"></i>`;
+                    }
+                    
+                    // 移除过渡标记
+                    setTimeout(() => {
+                        document.body.classList.remove('theme-transitioning');
+                    }, 300); // 与CSS过渡时间相匹配
+                }
             }
         },
         'add-contact': {
@@ -900,14 +929,22 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
             this.action = functionConfig.action;
+            this.element.dataset.tileId = id; // 确保添加标识
             this.bindEvents();
         }
 
         bindEvents() {
-            // 双击触发功能
-            this.element.addEventListener('dblclick', () => {
-                if (this.action) {
-                    this.action();
+            // 双击触发功能，添加防抖
+            let lastClickTime = 0;
+            this.element.addEventListener('dblclick', (e) => {
+                const currentTime = new Date().getTime();
+                if (currentTime - lastClickTime > 300) { // 防抖间隔
+                    lastClickTime = currentTime;
+                    if (this.action) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.action();
+                    }
                 }
             });
         }
