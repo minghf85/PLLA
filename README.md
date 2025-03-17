@@ -29,8 +29,7 @@ python -m venv venv
 source venv/bin/activate  # Linux/Mac
 venv\Scripts\activate     # Windows
 ```
-
-3. 安装依赖：
+1. 安装依赖：
 ```bash
 pip install -r requirements.txt
 ```

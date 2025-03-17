@@ -1,3 +1,23 @@
+// 添加 ChatHistory 类的定义 (放在文件开头的类定义区域)
+class ChatHistory {
+    constructor(id, title, date) {
+        this.id = id;
+        this.title = title;
+        this.date = date;
+    }
+
+    rename(newTitle) {
+        this.title = newTitle;
+        // TODO: 向后端发送更新请求
+        return this.title;
+    }
+
+    delete() {
+        // TODO: 向后端发送删除请求
+        return this.id;
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const menuToggle = document.getElementById('menu-toggle');
     const sidebar = document.getElementById('sidebar');
@@ -1024,108 +1044,88 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 修改 ChatTile 类
     class ChatTile extends ContainerTile {
-        constructor(id, options = {}) {
-            // 确保初始尺寸至少是 4x4
-            const size = '4x4';
-            super(id, {
-                ...options,
-                size: size,
-                color: '#3498db',
-                icon: 'fa-comments'
-            });
-
-            // 修改聊天界面样式
-            const style = document.createElement('style');
-            style.textContent = `
-                .chat-container {
-                    display: flex;
-                    flex-direction: column;
-                    height: 100%;
-                    background: var(--background-color);
-                    border-radius: 8px;
-                    overflow: hidden;
-                }
-
-                .chat-messages {
-                    flex: 1;
-                    padding: 16px;
-                    overflow-y: auto;
-                    display: flex;
-                    flex-direction: column;
-                    gap: 8px;
-                    background: var(--background-color);
-                }
-
-                .chat-input-area {
-                    padding: 12px;
-                    background: var(--surface-color);
-                    border-top: 1px solid var(--border-color);
-                    display: flex;
-                    gap: 8px;
-                    margin-top: auto;
-                }
-
-                .chat-input {
-                    flex: 1;
-                    padding: 8px 16px;
-                    border: 1px solid var(--border-color);
-                    border-radius: 20px;
-                    background: var(--background-color);
-                    color: var(--text-color);
-                }
-
-                .send-btn {
-                    padding: 8px 16px;
-                    background: var(--primary-color);
-                    color: white;
-                    border: none;
-                    border-radius: 20px;
-                    cursor: pointer;
-                }
-
-                .message {
-                    padding: 8px 12px;
-                    border-radius: 12px;
-                    max-width: 80%;
-                    word-break: break-word;
-                }
-
-                .message.sent {
-                    background: var(--primary-color);
-                    color: white;
-                    margin-left: auto;
-                    border-bottom-right-radius: 4px;
-                }
-
-                .message.received {
-                    background: var(--surface-color);
-                    color: var(--text-color);
-                    margin-right: auto;
-                    border-bottom-left-radius: 4px;
-                }
-            `;
-            document.head.appendChild(style);
+        constructor(options = {}) {
+            super(options);
+            this.chatHistory = [];  // 添加历史记录数组
         }
 
         createElement() {
             const tile = super.createElement();
             
             // 设置最小尺寸
-            tile.style.minWidth = '600px';  // 5 * 120px
-            tile.style.minHeight = '600px'; // 5 * 120px
+            tile.style.minWidth = '480px';
+            tile.style.minHeight = '480px';
             
             // 更新内容，确保内容在 container-content 内
             const contentContainer = tile.querySelector('.container-content');
             if (contentContainer) {
                 contentContainer.innerHTML = `
                     <div class="chat-container">
-                        <div class="chat-messages"></div>
-                        <div class="chat-input-area">
-                            <input type="text" class="chat-input" placeholder="输入消息...">
-                            <button class="send-btn">
-                                <i class="fas fa-paper-plane"></i>
-                                发送
-                            </button>
+                        <div class="chat-header">
+                            <div class="header-left">
+                                <div class="history-dropdown">
+                                    <button class="history-btn" title="历史消息">
+                                        <i class="fas fa-history"></i>
+                                        <i class="fas fa-chevron-down"></i>
+                                    </button>
+                                    <div class="history-menu">
+                                        <div class="history-header">
+                                            <div class="history-title">最近对话</div>
+                                            <div class="history-search">
+                                                <input type="text" placeholder="搜索历史消息...">
+                                            </div>
+                                        </div>
+                                        <div class="history-list">
+                                            <!-- 历史消息列表将在这里动态添加 -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="header-center">
+                                <div class="current-info">
+                                    <span class="current-contact">
+                                        <i class="fas fa-user"></i>
+                                        <span class="contact-name">默认联系人</span>
+                                    </span>
+                                    <span class="divider">·</span>
+                                    <span class="current-scenario">
+                                        <i class="fas fa-book"></i>
+                                        <span class="scenario-name">默认场景</span>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="header-right">
+                                <button class="new-chat-btn" title="新建对话">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="history-panel">
+                            <div class="history-content">
+                                <!-- 历史消息将在这里动态添加 -->
+                            </div>
+                        </div>
+                        <div class="chat-main">
+                            <div class="chat-messages"></div>
+                            <div class="chat-input-area">
+                                <div class="input-controls left">
+                                    <button class="control-btn listening-mode" title="听力模式">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="control-btn auto-play" title="自动播放">
+                                        <i class="fas fa-play"></i>
+                                    </button>
+                                </div>
+                                <input type="text" class="chat-input" placeholder="输入消息...">
+                                <div class="input-controls right">
+                                    <button class="control-btn voice-input" title="语音输入">
+                                        <i class="fas fa-microphone"></i>
+                                    </button>
+                                    <button class="send-btn" title="发送">
+                                        <i class="fas fa-paper-plane"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -1139,6 +1139,156 @@ document.addEventListener('DOMContentLoaded', function() {
             const input = tile.querySelector('.chat-input');
             const sendBtn = tile.querySelector('.send-btn');
             const messagesContainer = tile.querySelector('.chat-messages');
+            const historyBtn = tile.querySelector('.history-btn');
+            const historyMenu = tile.querySelector('.history-menu');
+            const historySearch = tile.querySelector('.history-search input');
+            const listeningModeBtn = tile.querySelector('.listening-mode');
+            const autoPlayBtn = tile.querySelector('.auto-play');
+            const voiceInputBtn = tile.querySelector('.voice-input');
+            const newChatBtn = tile.querySelector('.new-chat-btn');
+
+            // 历史消息下拉菜单
+            document.addEventListener('click', (e) => {
+                const isHistoryClick = e.target.closest('.history-dropdown');
+                if (!isHistoryClick) {
+                    historyMenu.classList.remove('active');
+                    historyBtn.classList.remove('active');
+                }
+            });
+
+            historyBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                historyMenu.classList.toggle('active');
+                historyBtn.classList.toggle('active');
+            });
+
+            // 历史消息搜索
+            historySearch.addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase();
+                const historyItems = tile.querySelectorAll('.history-item');
+                
+                historyItems.forEach(item => {
+                    const text = item.textContent.toLowerCase();
+                    item.style.display = text.includes(searchTerm) ? 'block' : 'none';
+                });
+            });
+
+            // 模拟一些历史消息数据
+            this.chatHistory = [
+                new ChatHistory('1', '商业计划书讨论', '今天'),
+                new ChatHistory('2', '技术方案评审', '7 天内'),
+                new ChatHistory('3', '产品需求分析', '7 天内')
+            ];
+
+            // 渲染历史消息列表
+            const renderHistoryList = () => {
+                const historyList = tile.querySelector('.history-list');
+                historyList.innerHTML = '';
+                
+                this.chatHistory.forEach(history => {
+                    const historyItem = document.createElement('div');
+                    historyItem.className = 'history-item';
+                    historyItem.innerHTML = `
+                        <div class="history-item-left">
+                            <div class="history-item-title">${history.title}</div>
+                            <div class="history-item-date">${history.date}</div>
+                        </div>
+                        <div class="history-item-actions">
+                            <button class="rename-btn" title="重命名">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="delete-btn" title="删除">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    `;
+
+                    // 点击加载对话
+                    historyItem.addEventListener('click', (e) => {
+                        if (!e.target.closest('.history-item-actions')) {
+                            console.log('加载对话:', history.id);
+                            historyMenu.classList.remove('active');
+                            historyBtn.classList.remove('active');
+                        }
+                    });
+
+                    // 重命名按钮事件
+                    historyItem.querySelector('.rename-btn').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const newTitle = prompt('请输入新的标题', history.title);
+                        if (newTitle && newTitle.trim()) {
+                            history.rename(newTitle.trim());
+                            renderHistoryList();
+                        }
+                    });
+
+                    // 删除按钮事件
+                    historyItem.querySelector('.delete-btn').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        if (confirm('确定要删除这条对话记录吗？')) {
+                            history.delete();
+                            this.chatHistory.splice(this.chatHistory.indexOf(history), 1);
+                            renderHistoryList();
+                        }
+                    });
+
+                    historyList.appendChild(historyItem);
+                });
+            };
+
+            // 新建对话按钮事件
+            newChatBtn.addEventListener('click', () => {
+                console.log('新建对话');
+                // TODO: 清空当前对话，准备新对话
+            });
+
+            // 初始渲染历史消息列表
+            renderHistoryList();
+
+            // 听力模式切换
+            let isListeningMode = false;
+            listeningModeBtn.addEventListener('click', () => {
+                isListeningMode = !isListeningMode;
+                const icon = listeningModeBtn.querySelector('i');
+                icon.classList.toggle('fa-eye');
+                icon.classList.toggle('fa-eye-slash');
+                
+                // 获取所有 AI 消息并切换模糊效果
+                const aiMessages = messagesContainer.querySelectorAll('.ai-message .message-content');
+                aiMessages.forEach(message => {
+                    message.classList.toggle('content-masked');
+                });
+            });
+
+            // 自动播放切换
+            let isAutoPlaying = false;
+            autoPlayBtn.addEventListener('click', () => {
+                isAutoPlaying = !isAutoPlaying;
+                const icon = autoPlayBtn.querySelector('i');
+                icon.classList.toggle('fa-play');
+                icon.classList.toggle('fa-pause');
+            });
+
+            // 语音输入
+            let isRecording = false;
+            let recordingTimeout;
+            
+            voiceInputBtn.addEventListener('mousedown', () => {
+                isRecording = true;
+                voiceInputBtn.classList.add('recording');
+                // TODO: 开始录音
+                console.log('开始录音...');
+            });
+
+            voiceInputBtn.addEventListener('mouseup', () => {
+                if (isRecording) {
+                    isRecording = false;
+                    voiceInputBtn.classList.remove('recording');
+                    clearTimeout(recordingTimeout);
+                    // TODO: 结束录音并处理
+                    console.log('结束录音');
+                }
+            });
 
             // 添加滚动到最新消息的方法
             const scrollToLatest = () => {
@@ -1162,18 +1312,55 @@ document.addEventListener('DOMContentLoaded', function() {
                     // 清空输入
                     input.value = '';
                     
-                    // 模拟AI回复，展示丰富的文本效果
+                    // 模拟AI回复，展示 Markdown 丰富文本效果
                     setTimeout(async () => {
                         const aiMsg = new AIMessage('');
                         messagesContainer.appendChild(aiMsg.element);
                         
                         const richContent = `
-                            <p>这是一个展示各种文本效果的示例：</p>
-                            <p><ruby>漢字<rt>かんじ</rt></ruby> 的发音展示</p>
-                            <p><mark>重点标记</mark>和<i>斜体</i>以及<strong>加粗</strong>效果</p>
-                            <p>代码示例：<code>console.log('Hello')</code></p>
-                            <div class="note">这是一段注释说明文本</div>
-                        `;
+# Markdown 展示示例
+
+这是一段普通文本，展示基本的 *斜体* 和 **粗体** 效果。
+
+## 代码示例
+\`\`\`python
+def hello_world():
+    print("你好，世界！")
+    return True
+\`\`\`
+
+## 列表示例
+- 无序列表项 1
+- 无序列表项 2
+  - 嵌套列表项
+  - 另一个嵌套项
+
+1. 有序列表项 1
+2. 有序列表项 2
+
+## 引用和高亮
+> 这是一段引用文本
+> 可以有多行
+
+这段文本包含 \`行内代码\` 和 ==高亮文本==
+
+## 表格示例
+| 功能 | 说明 |
+|------|------|
+| 粗体 | **文本** |
+| 斜体 | *文本* |
+| 代码 | \`代码\` |
+
+## 特殊标记
+- ✅ 已完成任务
+- ❌ 未完成任务
+- ⚠️ 警告信息
+- 💡 提示信息
+
+## 数学公式
+当 $a \\ne 0$ 时，方程 $ax^2 + bx + c = 0$ 有两个解：
+$$x = {-b \\pm \\sqrt{b^2-4ac} \\over 2a}$$
+`;
                         
                         await aiMsg.streamContent(richContent);
                         scrollToLatest();
@@ -1731,21 +1918,47 @@ document.addEventListener('DOMContentLoaded', function() {
                 ],
                 ...options
             };
+            
+            // 初始化 marked 配置
+            if (typeof marked !== 'undefined') {
+                marked.setOptions({
+                    renderer: new marked.Renderer(),
+                    highlight: function(code, language) {
+                        if (typeof hljs !== 'undefined') {
+                            return hljs.highlightAuto(code).value;
+                        }
+                        return code;
+                    },
+                    gfm: true,
+                    breaks: true,
+                    sanitize: false,
+                    smartLists: true,
+                    smartypants: false,
+                    xhtml: false
+                });
+            }
+            
             this.element = this.createElement();
-            this.isVisible = true;
         }
 
         createElement() {
             const messageBox = document.createElement('div');
             messageBox.className = 'message-box';
             
-            // 创建内容区域
+            // 创建 Markdown 内容区域
             const contentArea = document.createElement('div');
-            contentArea.className = 'message-content';
-            // 使用DOMParser安全地解析HTML内容
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(this.content, 'text/html');
-            contentArea.innerHTML = doc.body.innerHTML;
+            contentArea.className = 'message-content markdown-body';
+            
+            // 渲染 Markdown 内容
+            if (typeof marked !== 'undefined') {
+                try {
+                    contentArea.innerHTML = marked.parse(this.content);
+                } catch (e) {
+                    contentArea.textContent = this.content;
+                }
+            } else {
+                contentArea.textContent = this.content;
+            }
             
             // 创建分隔线
             const divider = document.createElement('div');
@@ -1772,82 +1985,104 @@ document.addEventListener('DOMContentLoaded', function() {
             return messageBox;
         }
 
-        // 流式显示文本，支持HTML内容
+        copyContent() {
+            const content = this.element.querySelector('.message-content').textContent;
+            navigator.clipboard.writeText(content).then(() => {
+                console.log('已复制到剪贴板');
+            });
+        }
+
         async streamContent(text) {
             const contentArea = this.element.querySelector('.message-content');
             contentArea.innerHTML = '';
             
-            // 使用临时容器处理HTML标签
-            const tempContainer = document.createElement('div');
-            tempContainer.innerHTML = text;
+            let buffer = '';
+            const chars = Array.from(text);
             
-            const nodes = Array.from(tempContainer.childNodes);
-            for (const node of nodes) {
-                if (node.nodeType === Node.TEXT_NODE) {
-                    // 文本节点逐字显示
-                    for (let char of node.textContent) {
-                        contentArea.insertAdjacentText('beforeend', char);
-                        await new Promise(resolve => setTimeout(resolve, 50));
+            for (let char of chars) {
+                buffer += char;
+                
+                // 每次累积一定数量的字符或遇到换行时进行一次渲染
+                if (char === '\n' || buffer.length % 10 === 0) {
+                    if (typeof marked !== 'undefined') {
+                        try {
+                            contentArea.innerHTML = marked.parse(buffer);
+                            
+                            // 代码高亮
+                            contentArea.querySelectorAll('pre code').forEach((block) => {
+                                if (typeof hljs !== 'undefined') {
+                                    hljs.highlightElement(block);
+                                }
+                            });
+                            
+                            // 数学公式渲染
+                            if (typeof MathJax !== 'undefined') {
+                                MathJax.typesetPromise([contentArea]);
+                            }
+                        } catch (e) {
+                            contentArea.textContent = buffer;
+                        }
+                    } else {
+                        contentArea.textContent = buffer;
                     }
-                } else {
-                    // HTML元素直接添加
-                    contentArea.appendChild(node.cloneNode(true));
+                    
+                    // 滚动到底部
+                    this.scrollToBottom();
+                    
+                    // 添加延迟以实现打字效果
+                    await new Promise(resolve => setTimeout(resolve, 30));
                 }
-                // 滚动到底部
-                this.element.closest('.chat-messages').scrollTo({
-                    top: this.element.closest('.chat-messages').scrollHeight,
-                    behavior: 'smooth'
+            }
+            
+            // 最后一次完整渲染
+            if (typeof marked !== 'undefined') {
+                contentArea.innerHTML = marked.parse(buffer);
+                
+                // 最终的代码高亮
+                contentArea.querySelectorAll('pre code').forEach((block) => {
+                    if (typeof hljs !== 'undefined') {
+                        hljs.highlightElement(block);
+                    }
                 });
+                
+                // 最终的数学公式渲染
+                if (typeof MathJax !== 'undefined') {
+                    MathJax.typesetPromise([contentArea]);
+                }
             }
         }
 
-        toggleVisibility() {
-            const contentArea = this.element.querySelector('.message-content');
-            const eyeIcon = this.element.querySelector('.fa-eye, .fa-eye-slash');
-            this.isVisible = !this.isVisible;
-            
-            if (this.isVisible) {
-                contentArea.classList.remove('content-masked');
-                eyeIcon.classList.replace('fa-eye-slash', 'fa-eye');
-            } else {
-                contentArea.classList.add('content-masked');
-                eyeIcon.classList.replace('fa-eye', 'fa-eye-slash');
+        scrollToBottom() {
+            const chatMessages = this.element.closest('.chat-messages');
+            if (chatMessages) {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
             }
-        }
-
-        // 复制内容
-        copyContent() {
-            const content = this.element.querySelector('.message-content').textContent;
-            navigator.clipboard.writeText(content).then(() => {
-                this.showToast('已复制到剪贴板');
-            });
-        }
-
-        // 显示提示
-        showToast(message) {
-            const toast = document.createElement('div');
-            toast.className = 'message-toast';
-            toast.textContent = message;
-            document.body.appendChild(toast);
-            
-            setTimeout(() => {
-                toast.remove();
-            }, 2000);
-        }
-
-        // 添加按钮
-        addButton(icon, text, onClick) {
-            const buttonArea = this.element.querySelector('.message-buttons');
-            const button = document.createElement('button');
-            button.className = 'message-btn';
-            button.innerHTML = `<i class="fas ${icon}"></i>`;
-            button.title = text;
-            button.addEventListener('click', onClick);
-            buttonArea.appendChild(button);
         }
     }
 
-    // AI消息类
+    // 修改 UserMessage 类
+    class UserMessage extends MessageBox {
+        constructor(content, options = {}) {
+            super(content, {
+                ...options,
+                buttons: [
+                    {
+                        icon: 'fa-copy',
+                        title: '复制',
+                        onClick: () => this.copyContent()
+                    },
+                    {
+                        icon: 'fa-comment-dots',
+                        title: '分析',
+                        onClick: () => this.analyze()
+                    }
+                ]
+            });
+            this.element.classList.add('user-message');
+        }
+    }
+
+    // 修改 AIMessage 类
     class AIMessage extends MessageBox {
         constructor(content, options = {}) {
             super(content, {
@@ -1881,156 +2116,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 ]
             });
             this.element.classList.add('ai-message');
-        }
-
-        speak() {
-            const content = this.element.querySelector('.message-content').textContent;
-            const utterance = new SpeechSynthesisUtterance(content);
-            utterance.lang = 'zh-CN';
-            speechSynthesis.speak(utterance);
-        }
-
-        analyze() {
-            console.log('分析功能待实现');
-            // TODO: 实现AI分析语法和重点词汇的功能
-        }
-
-        translate() {
-            console.log('翻译功能待实现');
-            // TODO: 实现翻译功能
+            
+            // 检查听力模式状态
+            const listeningMode = document.querySelector('.listening-mode .fa-eye-slash');
+            if (listeningMode) {
+                this.element.querySelector('.message-content').classList.add('content-masked');
+            }
         }
     }
-
-    // 用户消息类
-    class UserMessage extends MessageBox {
-        constructor(content, options = {}) {
-            super(content, {
-                ...options,
-                buttons: [
-                    {
-                        icon: 'fa-copy',
-                        title: '复制',
-                        onClick: () => this.copyContent()
-                    },
-                    {
-                        icon: 'fa-comment-dots',
-                        title: '分析',
-                        onClick: () => this.analyze()
-                    }
-                ]
-            });
-            this.element.classList.add('user-message');
-        }
-
-        analyze() {
-            console.log('分析功能待实现');
-            // TODO: 实现AI分析语法问题的功能
-        }
-    }
-
-    // 添加相关样式
-    const messageStyle = document.createElement('style');
-    messageStyle.textContent = `
-        .message-box {
-            margin-right: auto;
-            margin-left: 0;
-            max-width: 50%;
-        }
-
-        .user-message {
-            margin-left: auto;
-            margin-right: 0;
-            max-width: 50%;
-        }
-
-        .message-content {
-            font-family: var(--font-family);
-            line-height: 0.5;
-            transition: all 0.3s ease;
-            padding: 2px;
-            border-radius: 4px;
-            background: var(--message-bg);
-            color: var(--message-text);
-        }
-
-        .message-content p {
-            margin: 3px 0;
-            color: var(--text-color);
-        }
-
-        .message-content.content-masked {
-            filter: blur(5px);
-            user-select: none;
-        }
-
-        .message-content ruby {
-            ruby-align: center;
-            color: var(--text-color);
-        }
-
-        .message-content rt {
-            font-size: 0.7em;
-            color: var(--secondary-text-color);
-            line-height: 1;
-        }
-
-        .message-content mark {
-            background-color: var(--highlight-color);
-            padding: 0.2em 0.4em;
-            border-radius: 3px;
-            color: var(--mark-text);
-        }
-
-        .message-content .note {
-            font-size: 0.9em;
-            color: var(--note-text);
-            font-style: italic;
-            margin-top: 0.5em;
-            padding-left: 1em;
-            border-left: 3px solid var(--border-color);
-        }
-
-        .message-content code {
-            font-family: var(--mono-font);
-            background-color: var(--code-bg-color);
-            color: var(--code-text);
-            padding: 0.2em 0.4em;
-            border-radius: 3px;
-        }
-
-        .message-content i {
-            color: var(--italic-text);
-        }
-
-        .message-content strong {
-            color: var(--bold-text);
-        }
-
-        [data-theme="dark"] .message-content {
-            --message-bg: rgba(255, 255, 255, 0.1);
-            --message-text: #e0e0e0;
-            --text-color: #e0e0e0;
-            --highlight-color: rgba(255, 255, 0, 0.2);
-            --mark-text: #fff;
-            --code-bg-color: rgba(255, 255, 255, 0.1);
-            --code-text: #e0e0e0;
-            --italic-text: #b3e5fc;
-            --bold-text: #ffeb3b;
-            --note-text: #90caf9;
-        }
-
-        [data-theme="light"] .message-content {
-            --message-bg: #f5f5f5;
-            --message-text: #333;
-            --text-color: #333;
-            --highlight-color: rgba(255, 235, 59, 0.5);
-            --mark-text: #000;
-            --code-bg-color: rgba(0, 0, 0, 0.05);
-            --code-text: #333;
-            --italic-text: #0277bd;
-            --bold-text: #d32f2f;
-            --note-text: #1976d2;
-        }
-    `;
-    document.head.appendChild(messageStyle);
 });
