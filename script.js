@@ -1809,28 +1809,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // 用户消息类
-    class UserMessage extends MessageBox {
-        constructor(content, options = {}) {
-            super(content, {
-                ...options,
-                buttons: [
-                    {
-                        icon: 'fa-copy',
-                        title: '复制',
-                        onClick: () => this.copyContent()
-                    },
-                    {
-                        icon: 'fa-trash',
-                        title: '删除',
-                        onClick: () => this.element.remove()
-                    }
-                ]
-            });
-            this.element.classList.add('user-message');
-        }
-    }
-
     // AI消息类
     class AIMessage extends MessageBox {
         constructor(content, options = {}) {
@@ -1848,9 +1826,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         onClick: () => this.speak()
                     },
                     {
-                        icon: 'fa-code',
-                        title: '显示代码',
-                        onClick: () => this.toggleCode()
+                        icon: 'fa-comment-dots',
+                        title: '分析',
+                        onClick: () => this.analyze()
+                    },
+                    {
+                        icon: 'fa-language',
+                        title: '翻译',
+                        onClick: () => this.translate()
                     }
                 ]
             });
@@ -1864,9 +1847,41 @@ document.addEventListener('DOMContentLoaded', function() {
             speechSynthesis.speak(utterance);
         }
 
-        toggleCode() {
-            const content = this.element.querySelector('.message-content');
-            content.classList.toggle('show-code');
+        analyze() {
+            console.log('分析功能待实现');
+            // TODO: 实现AI分析语法和重点词汇的功能
+        }
+
+        translate() {
+            console.log('翻译功能待实现');
+            // TODO: 实现翻译功能
+        }
+    }
+
+    // 用户消息类
+    class UserMessage extends MessageBox {
+        constructor(content, options = {}) {
+            super(content, {
+                ...options,
+                buttons: [
+                    {
+                        icon: 'fa-copy',
+                        title: '复制',
+                        onClick: () => this.copyContent()
+                    },
+                    {
+                        icon: 'fa-comment-dots',
+                        title: '分析',
+                        onClick: () => this.analyze()
+                    }
+                ]
+            });
+            this.element.classList.add('user-message');
+        }
+
+        analyze() {
+            console.log('分析功能待实现');
+            // TODO: 实现AI分析语法问题的功能
         }
     }
 });
