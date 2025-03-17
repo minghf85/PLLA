@@ -1140,16 +1140,36 @@ document.addEventListener('DOMContentLoaded', function() {
             const sendBtn = tile.querySelector('.send-btn');
             const messagesContainer = tile.querySelector('.chat-messages');
 
+            // 添加滚动到最新消息的方法
+            const scrollToLatest = () => {
+                messagesContainer.scrollTo({
+                    top: messagesContainer.scrollHeight,
+                    behavior: 'smooth'  // 使用平滑滚动效果
+                });
+            };
+
             // 发送消息的函数
             const sendMessage = () => {
                 const message = input.value.trim();
                 if (message) {
-                    this.addMessage(message, 'sent');
+                    // 创建用户消息
+                    const userMsg = new UserMessage(message);
+                    messagesContainer.appendChild(userMsg.element);
+                    
+                    // 滚动到最新消息
+                    scrollToLatest();
+                    
+                    // 清空输入
                     input.value = '';
                     
-                    // 模拟接收消息
-                    setTimeout(() => {
-                        this.addMessage('这是一个自动回复消息', 'received');
+                    // 模拟AI回复
+                    setTimeout(async () => {
+                        const aiMsg = new AIMessage('这是一个AI回复示例');
+                        messagesContainer.appendChild(aiMsg.element);
+                        // 使用流式显示
+                        await aiMsg.streamContent('这是一个流式显示的AI回复示例...');
+                        // AI回复完成后也滚动到最新消息
+                        scrollToLatest();
                     }, 1000);
                 }
             };
@@ -1637,4 +1657,164 @@ document.addEventListener('DOMContentLoaded', function() {
     // 在文档加载完成后绑定保存按钮事件
     const saveBtn = document.querySelector('.save-btn');
     saveBtn.addEventListener('click', saveAllTileStates);
+
+    // 基础消息框类
+    class MessageBox {
+        constructor(content, options = {}) {
+            this.content = content;
+            this.options = {
+                buttons: [
+                    {
+                        icon: 'fa-copy',
+                        title: '复制',
+                        onClick: () => this.copyContent()
+                    }
+                ],
+                ...options
+            };
+            this.element = this.createElement();
+        }
+
+        createElement() {
+            const messageBox = document.createElement('div');
+            messageBox.className = 'message-box';
+            
+            // 创建内容区域
+            const contentArea = document.createElement('div');
+            contentArea.className = 'message-content';
+            contentArea.innerHTML = this.content;
+            
+            // 创建分隔线
+            const divider = document.createElement('div');
+            divider.className = 'message-divider';
+            
+            // 创建按钮区域
+            const buttonArea = document.createElement('div');
+            buttonArea.className = 'message-buttons';
+            
+            // 添加按钮
+            this.options.buttons.forEach(btn => {
+                const button = document.createElement('button');
+                button.className = 'message-btn';
+                button.innerHTML = `<i class="fas ${btn.icon}"></i>`;
+                button.title = btn.title;
+                button.addEventListener('click', btn.onClick);
+                buttonArea.appendChild(button);
+            });
+            
+            messageBox.appendChild(contentArea);
+            messageBox.appendChild(divider);
+            messageBox.appendChild(buttonArea);
+            
+            return messageBox;
+        }
+
+        // 流式显示文本
+        async streamContent(text) {
+            const contentArea = this.element.querySelector('.message-content');
+            contentArea.innerHTML = '';
+            
+            for (let char of text) {
+                contentArea.innerHTML += char;
+                // 每添加一个字符就滚动到底部
+                this.element.closest('.chat-messages').scrollTo({
+                    top: this.element.closest('.chat-messages').scrollHeight,
+                    behavior: 'smooth'
+                });
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+        }
+
+        // 复制内容
+        copyContent() {
+            const content = this.element.querySelector('.message-content').textContent;
+            navigator.clipboard.writeText(content).then(() => {
+                this.showToast('已复制到剪贴板');
+            });
+        }
+
+        // 显示提示
+        showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'message-toast';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 2000);
+        }
+
+        // 添加按钮
+        addButton(icon, text, onClick) {
+            const buttonArea = this.element.querySelector('.message-buttons');
+            const button = document.createElement('button');
+            button.className = 'message-btn';
+            button.innerHTML = `<i class="fas ${icon}"></i>`;
+            button.title = text;
+            button.addEventListener('click', onClick);
+            buttonArea.appendChild(button);
+        }
+    }
+
+    // 用户消息类
+    class UserMessage extends MessageBox {
+        constructor(content, options = {}) {
+            super(content, {
+                ...options,
+                buttons: [
+                    {
+                        icon: 'fa-copy',
+                        title: '复制',
+                        onClick: () => this.copyContent()
+                    },
+                    {
+                        icon: 'fa-trash',
+                        title: '删除',
+                        onClick: () => this.element.remove()
+                    }
+                ]
+            });
+            this.element.classList.add('user-message');
+        }
+    }
+
+    // AI消息类
+    class AIMessage extends MessageBox {
+        constructor(content, options = {}) {
+            super(content, {
+                ...options,
+                buttons: [
+                    {
+                        icon: 'fa-copy',
+                        title: '复制',
+                        onClick: () => this.copyContent()
+                    },
+                    {
+                        icon: 'fa-volume-up',
+                        title: '朗读',
+                        onClick: () => this.speak()
+                    },
+                    {
+                        icon: 'fa-code',
+                        title: '显示代码',
+                        onClick: () => this.toggleCode()
+                    }
+                ]
+            });
+            this.element.classList.add('ai-message');
+        }
+
+        speak() {
+            const content = this.element.querySelector('.message-content').textContent;
+            const utterance = new SpeechSynthesisUtterance(content);
+            utterance.lang = 'zh-CN';
+            speechSynthesis.speak(utterance);
+        }
+
+        toggleCode() {
+            const content = this.element.querySelector('.message-content');
+            content.classList.toggle('show-code');
+        }
+    }
 });

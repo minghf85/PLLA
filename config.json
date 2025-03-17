@@ -150,7 +150,7 @@
     "Agent_config": {
         "ollama": {
             "url": "http://127.0.0.1:11434",
-            "model": "llama3.1:8b",
+            "model": "qwen2.5:14b",
             "api_key": "ollama"
         },
         "openai": {
@@ -160,7 +160,7 @@
         },
         "deepseek": {
             "url": "https://api.deepseek.com/v1",
-            "model": "deepseek-coder",
+            "model": "deepseek-chat",
             "api_key": "sk-de42a36fb5aa465b9d0de50c06d53e7b"
         }
     }
