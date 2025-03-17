@@ -1,3 +1,7 @@
+import threading
+import time
+import queue
+import realtimeTTS
 class TTSThread:
     def __init__(self):
         self.tts = None

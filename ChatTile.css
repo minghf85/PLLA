@@ -165,7 +165,7 @@
     display: flex;
     flex-direction: column;
     background: var(--surface-color);
-    color: var(--text-color);
+
 }
 
 /* 消息内容区域 */
@@ -173,20 +173,19 @@
     width: 100%;
     font-family: var(--font-family);
     line-height: 1.6;
-    color: inherit;
+    color: var(--text-color);
     overflow-wrap: break-word;
-    background: inherit;
+    padding: 12px;
 }
 
 /* Markdown 样式 */
 .markdown-body {
     width: 100%;
-    color: var(--message-text);
-    background: inherit;
 }
 
 .markdown-body p {
     margin: 0;
+    color: var(--text-color);
 }
 
 .markdown-body pre {
@@ -228,10 +227,13 @@
     border: none;
     color: var(--secondary-text-color);
     cursor: pointer;
-    transition: color 0.2s ease;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
 }
 
 .message-btn:hover {
+    background: var(--hover-bg);
     color: var(--primary-color);
 }
 
@@ -244,37 +246,46 @@
 /* 主题适配变量 */
 :root {
     /* 亮色主题默认值 */
+    --background-color: #ffffff;
+    --surface-color: #f5f5f5;
+    --text-color: #000000;
+    --secondary-text-color: #666666;
+    --border-color: #e0e0e0;
+    --hover-bg: rgba(0, 0, 0, 0.05);
+    --primary-color: #2196f3;
+    /* 消息框专用变量 */
     --message-bg: var(--surface-color);
-    --message-text: #333333;
     --code-bg: rgba(0, 0, 0, 0.05);
-    --code-text: #333333;
     --quote-text: #1976d2;
     --link-color: #1976d2;
     --heading-color: #1565c0;
-    --table-border: #e0e0e0;
-    --table-header-bg: #f5f5f5;
+    --table-border: var(--border-color);
+    --table-header-bg: var(--surface-color);
     --inline-code-bg: rgba(0, 0, 0, 0.05);
     --inline-code-text: #e53935;
 }
 
 /* 暗色主题变量 */
 [data-theme="dark"] {
-    --message-bg: var(--surface-color);
-    --message-text: #e0e0e0;
+    --background-color: #1a1a1a;
+    --surface-color: #2d2d2d;
+    --text-color: #ffffff;
+    --secondary-text-color: #aaaaaa;
+    --border-color: #404040;
+    --hover-bg: rgba(255, 255, 255, 0.05);
+    --primary-color: #64b5f6;
+    /* 只覆盖需要特殊处理的颜色 */
     --code-bg: rgba(255, 255, 255, 0.1);
-    --code-text: #e0e0e0;
     --quote-text: #90caf9;
     --link-color: #64b5f6;
     --heading-color: #bbdefb;
-    --table-border: #424242;
-    --table-header-bg: rgba(255, 255, 255, 0.05);
     --inline-code-bg: rgba(255, 255, 255, 0.1);
     --inline-code-text: #ff8a80;
 }
 
 /* 更新 Markdown 样式 */
 .markdown-body {
-    color: var(--message-text);
+    color: var(--text-color) !important;
 }
 
 .markdown-body code:not(pre code) {
@@ -302,7 +313,7 @@
 
 /* 数学公式样式 */
 .markdown-body .math {
-    color: var(--message-text);
+    color: var(--text-color);
     overflow-x: auto;
     padding: 8px 0;
 }
@@ -351,4 +362,38 @@
 
 .markdown-body a:hover {
     text-decoration: underline;
+}
+
+/* 磁贴交互效果 */
+.tile {
+    position: absolute;
+    width: 120px;
+    height: 120px;
+    background: var(--surface-color);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s, box-shadow 0.2s;
+    user-select: none;
+    cursor: default;
+    border: 1px solid transparent;
+}
+
+.tile:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-color: var(--primary-color);
+}
+
+/* 拖动时的效果 */
+.tile.dragging {
+    opacity: 0.8;
+    z-index: 100;
+    pointer-events: none;
+    transition: none;
+}
+
+/* 调整大小时的效果 */
+.tile.resizing {
+    transition: none;
+    z-index: 100;
 }

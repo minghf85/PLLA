@@ -53,27 +53,32 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // 暗色/亮色主题切换
-    let isDarkMode = localStorage.getItem('darkMode') === 'true';
-    
-    // 初始化主题
-    if (isDarkMode) {
-        document.body.classList.add('dark-mode');
-        themeBtn.innerHTML = '<i class="fas fa-sun"></i>';
-    }
-
+    // 修改主题切换按钮的事件处理
     themeBtn.addEventListener('click', function() {
-        isDarkMode = !isDarkMode;
-        document.body.classList.toggle('dark-mode');
+        const isDark = document.body.getAttribute('data-theme') === 'dark';
+        document.body.setAttribute('data-theme', isDark ? 'light' : 'dark');
         
-        // 更新图标
-        themeBtn.innerHTML = isDarkMode ? 
-            '<i class="fas fa-sun"></i>' : 
-            '<i class="fas fa-moon"></i>';
+        const themeBtns = [
+            themeBtn,
+            document.querySelector('.tile[data-tile-id="theme"] .tile-icon')
+        ];
         
-        // 保存主题设置
-        localStorage.setItem('darkMode', isDarkMode);
+        themeBtns.forEach(btn => {
+            if (btn) {
+                const newIcon = `<i class="fas ${isDark ? 'fa-moon' : 'fa-sun'}"></i>`;
+                btn.innerHTML = newIcon;
+            }
+        });
+        
+        localStorage.setItem('theme', isDark ? 'light' : 'dark');
     });
+
+    // 初始化主题
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.body.setAttribute('data-theme', savedTheme);
+
+    // 初始化右上角按钮图标
+    themeBtn.innerHTML = `<i class="fas ${savedTheme === 'dark' ? 'fa-sun' : 'fa-moon'}"></i>`;
 
     // 拖拽调整大小功能
     let isResizing = false;
@@ -349,19 +354,24 @@ document.addEventListener('DOMContentLoaded', function() {
                     // 移除之前的重叠效果
                     if (this.overlappingTile) {
                         this.overlappingTile.classList.remove('tile-overlapping');
-                        console.log('预览框结束重叠:', this.overlappingTile.dataset.tileId);
                     }
 
                     this.overlappingTile = overlappingTile;
 
                     // 设置新的重叠效果
-                    if (overlappingTile) {
+                    if (overlappingTile && overlappingTile.dataset.tileId === 'chat') {
                         overlappingTile.classList.add('tile-overlapping');
-                        console.log('预览框开始重叠:', overlappingTile.dataset.tileId);
                         
                         // 设置新的计时器
                         this.overlappingTimer = setTimeout(() => {
-                            console.log('预览框重叠超过1.2秒:', overlappingTile.dataset.tileId);
+                            const draggedType = draggedTile.dataset.tileId.split('_')[0];
+                            if (ChatTile.instance) {
+                                if (draggedType === 'contact') {
+                                    ChatTile.instance.updateCurrentContact(draggedTile.dataset.tileId);
+                                } else if (draggedType === 'scenario') {
+                                    ChatTile.instance.updateCurrentScenario(draggedTile.dataset.tileId);
+                                }
+                            }
                             this.handleOverlapTimeout(draggedTile, overlappingTile);
                         }, 1200);
                     }
@@ -858,34 +868,23 @@ document.addEventListener('DOMContentLoaded', function() {
         },
         theme: {
             title: '主题切换',
-            icon: 'fa-lightbulb',
+            icon: savedTheme === 'dark' ? 'fa-sun' : 'fa-moon',  // 根据当前主题设置初始图标
             color: '#f1c40f',
             action: () => {
                 // 添加过渡状态检查，避免快速重复切换
                 if (!document.body.classList.contains('theme-transitioning')) {
                     document.body.classList.add('theme-transitioning');
                     
-                    // 切换主题
-                    const isDarkMode = document.body.classList.toggle('dark-mode');
-                    localStorage.setItem('darkMode', isDarkMode);
-                    
-                    // 更新所有主题相关图标
-                    const themeTileIcon = document.querySelector('.tile[data-tile-id="theme"] .tile-icon i');
+                    // 直接触发右上角主题按钮的点击事件
                     const themeBtn = document.querySelector('.theme-btn');
-                    
-                    // 同步更新图标
-                    const newIconClass = isDarkMode ? 'fas fa-sun' : 'fas fa-moon';
-                    if (themeTileIcon) {
-                        themeTileIcon.className = newIconClass;
-                    }
                     if (themeBtn) {
-                        themeBtn.innerHTML = `<i class="${newIconClass}"></i>`;
+                        themeBtn.click();
                     }
                     
                     // 移除过渡标记
                     setTimeout(() => {
                         document.body.classList.remove('theme-transitioning');
-                    }, 300); // 与CSS过渡时间相匹配
+                    }, 300);
                 }
             }
         },
@@ -1045,13 +1044,33 @@ document.addEventListener('DOMContentLoaded', function() {
     // 修改 ChatTile 类
     class ChatTile extends ContainerTile {
         constructor(options = {}) {
-            super(options);
-            this.chatHistory = [];  // 添加历史记录数组
+            super('chat', options);
+            this.chatHistory = [];
+            this.current_contact = 'default';
+            this.current_scenario = 'default';
+            ChatTile.instance = this;
+        }
+
+        updateCurrentContact(contact) {
+            this.current_contact = contact;
+            const contactNameElement = this.element.querySelector('.contact-name');
+            if (contactNameElement) {
+                contactNameElement.textContent = contact;
+            }
+        }
+
+        updateCurrentScenario(scenario) {
+            this.current_scenario = scenario;
+            const scenarioNameElement = this.element.querySelector('.scenario-name');
+            if (scenarioNameElement) {
+                scenarioNameElement.textContent = scenario;
+            }
         }
 
         createElement() {
             const tile = super.createElement();
-            
+            const current_contact = this.current_contact;
+            const current_scenario = this.current_scenario;
             // 设置最小尺寸
             tile.style.minWidth = '480px';
             tile.style.minHeight = '480px';
@@ -1085,12 +1104,12 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <div class="current-info">
                                     <span class="current-contact">
                                         <i class="fas fa-user"></i>
-                                        <span class="contact-name">默认联系人</span>
+                                        <span class="contact-name">${current_contact}</span>
                                     </span>
                                     <span class="divider">·</span>
                                     <span class="current-scenario">
                                         <i class="fas fa-book"></i>
-                                        <span class="scenario-name">默认场景</span>
+                                        <span class="scenario-name">${current_scenario}</span>
                                     </span>
                                 </div>
                             </div>
@@ -1328,6 +1347,15 @@ def hello_world():
     print("你好，世界！")
     return True
 \`\`\`
+
+<ruby>
+  日本語 <rp>(</rp><rt>にほんご</rt><rp>)</rp>
+</ruby>
+を
+<ruby>
+  勉強 <rp>(</rp><rt>べんきょう</rt><rp>)</rp>
+</ruby>
+しています。
 
 ## 列表示例
 - 无序列表项 1
