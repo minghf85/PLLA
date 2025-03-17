@@ -46,7 +46,7 @@ def create_database():
         content TEXT NOT NULL,
         message_type TEXT CHECK(message_type IN ('text', 'voice')) NOT NULL,
         voice_cache_id TEXT,
-        is_user BOOLEAN NOT NULL,  # True表示用户发送，False表示AI回复
+        is_user BOOLEAN NOT NULL,
         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (session_id) REFERENCES chat_sessions (session_id)
     )

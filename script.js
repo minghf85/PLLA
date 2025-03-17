@@ -1111,8 +1111,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const tile = super.createElement();
             
             // 设置最小尺寸
-            tile.style.minWidth = '480px';  // 4 * 120px
-            tile.style.minHeight = '480px'; // 4 * 120px
+            tile.style.minWidth = '600px';  // 5 * 120px
+            tile.style.minHeight = '600px'; // 5 * 120px
             
             // 更新内容，确保内容在 container-content 内
             const contentContainer = tile.querySelector('.container-content');
@@ -1162,13 +1162,20 @@ document.addEventListener('DOMContentLoaded', function() {
                     // 清空输入
                     input.value = '';
                     
-                    // 模拟AI回复
+                    // 模拟AI回复，展示丰富的文本效果
                     setTimeout(async () => {
-                        const aiMsg = new AIMessage('这是一个AI回复示例');
+                        const aiMsg = new AIMessage('');
                         messagesContainer.appendChild(aiMsg.element);
-                        // 使用流式显示
-                        await aiMsg.streamContent('这是一个流式显示的AI回复示例...');
-                        // AI回复完成后也滚动到最新消息
+                        
+                        const richContent = `
+                            <p>这是一个展示各种文本效果的示例：</p>
+                            <p><ruby>漢字<rt>かんじ</rt></ruby> 的发音展示</p>
+                            <p><mark>重点标记</mark>和<i>斜体</i>以及<strong>加粗</strong>效果</p>
+                            <p>代码示例：<code>console.log('Hello')</code></p>
+                            <div class="note">这是一段注释说明文本</div>
+                        `;
+                        
+                        await aiMsg.streamContent(richContent);
                         scrollToLatest();
                     }, 1000);
                 }
@@ -1725,6 +1732,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 ...options
             };
             this.element = this.createElement();
+            this.isVisible = true;
         }
 
         createElement() {
@@ -1734,7 +1742,10 @@ document.addEventListener('DOMContentLoaded', function() {
             // 创建内容区域
             const contentArea = document.createElement('div');
             contentArea.className = 'message-content';
-            contentArea.innerHTML = this.content;
+            // 使用DOMParser安全地解析HTML内容
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(this.content, 'text/html');
+            contentArea.innerHTML = doc.body.innerHTML;
             
             // 创建分隔线
             const divider = document.createElement('div');
@@ -1761,19 +1772,46 @@ document.addEventListener('DOMContentLoaded', function() {
             return messageBox;
         }
 
-        // 流式显示文本
+        // 流式显示文本，支持HTML内容
         async streamContent(text) {
             const contentArea = this.element.querySelector('.message-content');
             contentArea.innerHTML = '';
             
-            for (let char of text) {
-                contentArea.innerHTML += char;
-                // 每添加一个字符就滚动到底部
+            // 使用临时容器处理HTML标签
+            const tempContainer = document.createElement('div');
+            tempContainer.innerHTML = text;
+            
+            const nodes = Array.from(tempContainer.childNodes);
+            for (const node of nodes) {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    // 文本节点逐字显示
+                    for (let char of node.textContent) {
+                        contentArea.insertAdjacentText('beforeend', char);
+                        await new Promise(resolve => setTimeout(resolve, 50));
+                    }
+                } else {
+                    // HTML元素直接添加
+                    contentArea.appendChild(node.cloneNode(true));
+                }
+                // 滚动到底部
                 this.element.closest('.chat-messages').scrollTo({
                     top: this.element.closest('.chat-messages').scrollHeight,
                     behavior: 'smooth'
                 });
-                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+        }
+
+        toggleVisibility() {
+            const contentArea = this.element.querySelector('.message-content');
+            const eyeIcon = this.element.querySelector('.fa-eye, .fa-eye-slash');
+            this.isVisible = !this.isVisible;
+            
+            if (this.isVisible) {
+                contentArea.classList.remove('content-masked');
+                eyeIcon.classList.replace('fa-eye-slash', 'fa-eye');
+            } else {
+                contentArea.classList.add('content-masked');
+                eyeIcon.classList.replace('fa-eye', 'fa-eye-slash');
             }
         }
 
@@ -1834,6 +1872,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         icon: 'fa-language',
                         title: '翻译',
                         onClick: () => this.translate()
+                    },
+                    {
+                        icon: 'fa-eye',
+                        title: '隐藏/显示',
+                        onClick: () => this.toggleVisibility()
                     }
                 ]
             });
@@ -1884,4 +1927,110 @@ document.addEventListener('DOMContentLoaded', function() {
             // TODO: 实现AI分析语法问题的功能
         }
     }
+
+    // 添加相关样式
+    const messageStyle = document.createElement('style');
+    messageStyle.textContent = `
+        .message-box {
+            margin-right: auto;
+            margin-left: 0;
+            max-width: 50%;
+        }
+
+        .user-message {
+            margin-left: auto;
+            margin-right: 0;
+            max-width: 50%;
+        }
+
+        .message-content {
+            font-family: var(--font-family);
+            line-height: 0.5;
+            transition: all 0.3s ease;
+            padding: 2px;
+            border-radius: 4px;
+            background: var(--message-bg);
+            color: var(--message-text);
+        }
+
+        .message-content p {
+            margin: 3px 0;
+            color: var(--text-color);
+        }
+
+        .message-content.content-masked {
+            filter: blur(5px);
+            user-select: none;
+        }
+
+        .message-content ruby {
+            ruby-align: center;
+            color: var(--text-color);
+        }
+
+        .message-content rt {
+            font-size: 0.7em;
+            color: var(--secondary-text-color);
+            line-height: 1;
+        }
+
+        .message-content mark {
+            background-color: var(--highlight-color);
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+            color: var(--mark-text);
+        }
+
+        .message-content .note {
+            font-size: 0.9em;
+            color: var(--note-text);
+            font-style: italic;
+            margin-top: 0.5em;
+            padding-left: 1em;
+            border-left: 3px solid var(--border-color);
+        }
+
+        .message-content code {
+            font-family: var(--mono-font);
+            background-color: var(--code-bg-color);
+            color: var(--code-text);
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+        }
+
+        .message-content i {
+            color: var(--italic-text);
+        }
+
+        .message-content strong {
+            color: var(--bold-text);
+        }
+
+        [data-theme="dark"] .message-content {
+            --message-bg: rgba(255, 255, 255, 0.1);
+            --message-text: #e0e0e0;
+            --text-color: #e0e0e0;
+            --highlight-color: rgba(255, 255, 0, 0.2);
+            --mark-text: #fff;
+            --code-bg-color: rgba(255, 255, 255, 0.1);
+            --code-text: #e0e0e0;
+            --italic-text: #b3e5fc;
+            --bold-text: #ffeb3b;
+            --note-text: #90caf9;
+        }
+
+        [data-theme="light"] .message-content {
+            --message-bg: #f5f5f5;
+            --message-text: #333;
+            --text-color: #333;
+            --highlight-color: rgba(255, 235, 59, 0.5);
+            --mark-text: #000;
+            --code-bg-color: rgba(0, 0, 0, 0.05);
+            --code-text: #333;
+            --italic-text: #0277bd;
+            --bold-text: #d32f2f;
+            --note-text: #1976d2;
+        }
+    `;
+    document.head.appendChild(messageStyle);
 });
