@@ -1240,23 +1240,59 @@ document.addEventListener('DOMContentLoaded', function() {
         async loadConfig() {
             try {
                 const response = await fetch('/api/config');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 this.config = await response.json();
+                
+                // 确保配置中包含必要的结构
+                if (!this.config.Learn_config) {
+                    this.config.Learn_config = {};
+                }
+                if (!this.config.Learn_config.zh) {
+                    this.config.Learn_config.zh = {};
+                }
+                
                 // 确保使用正确的网格配置
                 this.gridConfig = this.config.Learn_config.zh.grid_config || {
                     tile_size: 120,
                     gap_size: 10
                 };
+                
                 await this.generateTiles();
             } catch (error) {
                 console.error('加载配置失败:', error);
+                // 使用默认配置
+                this.config = {
+                    Learn_config: {
+                        zh: {
+                            grid_config: {
+                                tile_size: 120,
+                                gap_size: 10
+                            },
+                            function_tiles: {},
+                            contact: {},
+                            scene: {},
+                            chat_tile: {
+                                tile: {
+                                    position: 'translate3d(0px, 0px, 0)',
+                                    size: '4x4'
+                                }
+                            }
+                        }
+                    }
+                };
+                this.gridConfig = this.config.Learn_config.zh.grid_config;
+                await this.generateTiles();
             }
         }
 
         calculateTileSize(size) {
+            if (!size) return { width: 120, height: 120 };
             const [w, h] = size.split('x').map(Number);
             return {
-                width: w * this.gridConfig.tile_size + (w - 1) * this.gridConfig.gap_size,
-                height: h * this.gridConfig.tile_size + (h - 1) * this.gridConfig.gap_size
+                width: w * this.gridConfig.tile_size,
+                height: h * this.gridConfig.tile_size
             };
         }
 
@@ -1277,12 +1313,13 @@ document.addEventListener('DOMContentLoaded', function() {
                         const tile = new FunctionTile(name);
                         if (data.tile) {
                             // 应用保存的布局
+                            const tileSize = this.calculateTileSize(data.tile.size);
                             Object.assign(tile.element.style, {
                                 transform: data.tile.position,
-                                width: data.tile.width || '120px',
-                                height: data.tile.height || '120px'
+                                width: `${tileSize.width}px`,
+                                height: `${tileSize.height}px`
                             });
-                            tile.element.dataset.size = data.tile.size || '1x1';
+                            tile.element.dataset.size = data.tile.size;
                         }
                         return tile;
                     }),
@@ -1292,12 +1329,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     .map(([name, data]) => {
                         const tile = new ContactTile(name, data);
                         if (data.tile) {
+                            const tileSize = this.calculateTileSize(data.tile.size);
                             Object.assign(tile.element.style, {
                                 transform: data.tile.position,
-                                width: data.tile.width || '120px',
-                                height: data.tile.height || '120px'
+                                width: `${tileSize.width}px`,
+                                height: `${tileSize.height}px`
                             });
-                            tile.element.dataset.size = data.tile.size || '1x1';
+                            tile.element.dataset.size = data.tile.size;
                         }
                         return tile;
                     }),
@@ -1307,12 +1345,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     .map(([name, data]) => {
                         const tile = new ScenarioTile(name, data);
                         if (data.tile) {
+                            const tileSize = this.calculateTileSize(data.tile.size);
                             Object.assign(tile.element.style, {
                                 transform: data.tile.position,
-                                width: data.tile.width || '120px',
-                                height: data.tile.height || '120px'
+                                width: `${tileSize.width}px`,
+                                height: `${tileSize.height}px`
                             });
-                            tile.element.dataset.size = data.tile.size || '1x1';
+                            tile.element.dataset.size = data.tile.size;
                         }
                         return tile;
                     }),
@@ -1327,10 +1366,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     // 应用保存的布局
                     if (chatTileConfig && chatTileConfig.tile) {
+                        const tileSize = this.calculateTileSize(chatTileConfig.tile.size);
                         Object.assign(chatTile.element.style, {
                             transform: chatTileConfig.tile.position,
-                            width: chatTileConfig.tile.width,
-                            height: chatTileConfig.tile.height
+                            width: `${tileSize.width}px`,
+                            height: `${tileSize.height}px`
                         });
                         chatTile.element.dataset.size = chatTileConfig.tile.size;
                     }
@@ -1610,24 +1650,36 @@ document.addEventListener('DOMContentLoaded', function() {
                     let requestBody;
                     if (tileInstance instanceof ChatTile) {
                         requestBody = {
-                            id: tileInstance.id,
+                            id: 'chat_tile',
                             type: 'chat_tile',
                             state: state
                         };
-                    } else {
+                    } else if (tileInstance instanceof ContactTile) {
                         requestBody = {
-                            id: tileInstance.id,
+                            id: `contact_${tileInstance.name}`,
+                            state: state
+                        };
+                    } else if (tileInstance instanceof ScenarioTile) {
+                        requestBody = {
+                            id: `scenario_${tileInstance.scenario.scene_name}`,
+                            state: state
+                        };
+                    } else if (tileInstance instanceof FunctionTile) {
+                        requestBody = {
+                            id: `function_${tileInstance.id}`,
                             state: state
                         };
                     }
 
-                    return fetch('/api/tile/update', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(requestBody)
-                    }).then(response => response.json());
+                    if (requestBody) {
+                        return fetch('/api/tile/update', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(requestBody)
+                        }).then(response => response.json());
+                    }
                 }
                 return Promise.resolve();
             });

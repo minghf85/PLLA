@@ -83,6 +83,10 @@ class Config:
                     self.config['Learn_config']['zh']['chat_tile'] = {}
                 self.config['Learn_config']['zh']['chat_tile']['tile'] = state
             else:
+                # 添加对tile_id格式的验证
+                if '_' not in tile_id:
+                    raise ValueError(f"无效的tile_id格式: {tile_id}")
+                    
                 tile_type, name = tile_id.split('_', 1)
                 if tile_type == 'contact':
                     self.config['Learn_config']['zh']['contact'][name]['tile'] = state
@@ -90,6 +94,8 @@ class Config:
                     self.config['Learn_config']['zh']['scene'][name]['tile'] = state
                 elif tile_type == 'function':
                     self.config['Learn_config']['zh']['function_tiles'][name]['tile'] = state
+                else:
+                    raise ValueError(f"未知的磁贴类型: {tile_type}")
             
             return self.save_config()
         except Exception as e:
