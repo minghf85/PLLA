@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>语言学习平台</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- 顶部导航栏 -->
+    <nav class="top-nav">
+        <button id="menu-toggle" class="menu-btn">
+            <i class="fas fa-bars"></i>
+        </button>
+        <div class="right-controls">
+            <button class="save-btn" title="保存磁贴布局">
+                <i class="fas fa-save"></i>
+            </button>
+            <button class="search-btn">
+                <i class="fas fa-search"></i>
+            </button>
+            <button class="theme-btn">
+                <i class="fas fa-lightbulb"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- 侧边菜单 -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-content">
+            <h2>菜单</h2>
+            <ul>
+                <li><a href="#"><i class="fas fa-home"></i> 首页</a></li>
+                <li><a href="#"><i class="fas fa-book"></i> 学习计划</a></li>
+                <li><a href="#"><i class="fas fa-chart-line"></i> 进度追踪</a></li>
+                <li><a href="#"><i class="fas fa-cog"></i> 设置</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- 主要内容区域 -->
+    <main class="main-content">
+        <!-- 磁贴区域 -->
+        <section class="tiles-section" id="tiles">
+            <div class="section-header">
+                <h2>磁贴</h2>
+                <div class="header-controls">
+                    <button class="add-btn" title="添加磁贴">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                    <div class="window-controls">
+                        <button class="minimize-btn"><i class="fas fa-minus"></i></button>
+                        <button class="maximize-btn"><i class="fas fa-expand"></i></button>
+                    </div>
+                </div>
+            </div>
+            <div class="tiles-container" data-sortable="true">
+                <!-- 磁贴将由 JavaScript 动态生成 -->
+            </div>
+        </section>
+        
+        <!-- 拖拽调整大小的分隔条 -->
+        <div class="resizer" id="mainResizer"></div>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
