@@ -19,6 +19,7 @@ class ChatHistory {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    Global_isListeningMode = false;
     const menuToggle = document.getElementById('menu-toggle');
     const sidebar = document.getElementById('sidebar');
     const mainContent = document.querySelector('.main-content');
@@ -1265,22 +1266,34 @@ document.addEventListener('DOMContentLoaded', function() {
             renderHistoryList();
 
             // 听力模式切换
-            let isListeningMode = false;//初始为关闭听力模式
             listeningModeBtn.addEventListener('click', () => {
-                isListeningMode = !isListeningMode;
+                Global_isListeningMode = !Global_isListeningMode;
                 const icon = listeningModeBtn.querySelector('i');
                 icon.classList.toggle('fa-eye');
                 icon.classList.toggle('fa-eye-slash');
                 
-                // 获取所有 AI 消息，切换模糊效果，并修改现在AIMessage的isListeningMode状态
-                const aiMessages = messagesContainer.querySelectorAll('.ai-message .message-content');
-                aiMessages.forEach(message => {
-                //检查现在所有的AIMessage的isListeningMode状态是否和isListeningMode相同
-                if(AIMessage.instance.isListeningMode != isListeningMode){
-                    //切换模糊效果
-                    message.toggleVisibility();
-                }
-                
+                // 获取所有 AI 消息
+                const aiMessages = messagesContainer.querySelectorAll('.ai-message');
+                aiMessages.forEach(messageEl => {
+                    const content = messageEl.querySelector('.message-content');
+                    const button = messageEl.querySelector('.message-btn[title="显示"], .message-btn[title="隐藏"]');
+                    const eyeIcon = button?.querySelector('i');
+                    
+                    if (Global_isListeningMode) {
+                        content.classList.add('content-masked');
+                        if (eyeIcon) {
+                            eyeIcon.classList.remove('fa-eye');
+                            eyeIcon.classList.add('fa-eye-slash');
+                            button.title = '显示';
+                        }
+                    } else {
+                        content.classList.remove('content-masked');
+                        if (eyeIcon) {
+                            eyeIcon.classList.add('fa-eye');
+                            eyeIcon.classList.remove('fa-eye-slash');
+                            button.title = '隐藏';
+                        }
+                    }
                 });
             });
 
@@ -1338,9 +1351,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     // 模拟AI回复
                     setTimeout(async () => {
-                        //创建一个新的AIMessage实例并传入现在的isListeningMode状态
+                        // 创建一个新的AIMessage实例并传入当前的Global_isListeningMode状态
                         const aiMsg = new AIMessage('', {
-                            isListeningMode: isListeningMode
+                            isListeningMode: Global_isListeningMode
                         });
                         messagesContainer.appendChild(aiMsg.element);
                         
@@ -2142,25 +2155,20 @@ $$x = {-b \\pm \\sqrt{b^2-4ac} \\over 2a}$$
                     },
                     {
                         icon: 'fa-eye',
-                        title: '显示',
+                        title: options.isListeningMode ? '显示' : '隐藏',
                         onClick: () => this.toggleVisibility()
                     }
-                ],
-                isListeningMode: false // 默认为关闭
+                ]
             });
             this.element.classList.add('ai-message');
+            this.isListeningMode = options.isListeningMode;
             
             // 初始化消息状态，跟随全局听力模式
-            
-            if (this.isListeningMode) {
-                const content = this.element.querySelector('.message-content');
-                content.classList.add('content-masked');
-                const button = this.element.querySelector('.message-btn[title="显示"]');
-                const eyeIcon = button?.querySelector('i');
-                if (eyeIcon) {
-                    eyeIcon.classList.remove('fa-eye');
-                    eyeIcon.classList.add('fa-eye-slash');
-                }
+            if(this.isListeningMode){
+                this.element.querySelector('.message-content').classList.add('content-masked');
+            }
+            else{
+                this.element.querySelector('.message-content').classList.remove('content-masked');
             }
         }
 
