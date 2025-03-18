@@ -1,6 +1,6 @@
 from openai import OpenAI
 import ollama
-class PLLAgent:#PLLAgent是基于LLM的Agent，personal language learning agent，用于执行各种任务。
+class PLLAgent:#PLLAgent是基于LLM的Agent，personal language learning agent，用于执行各种任务。输出为markdown格式
     def __init__(self, platform):
         self.platform = platform
         self.client = OpenAI(api_key=self.platform.api_key, base_url=self.platform.url)

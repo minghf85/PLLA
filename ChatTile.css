@@ -111,6 +111,7 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
+    align-items: stretch;
 }
 
 /* 输入区域 */
@@ -161,21 +162,37 @@
 /* MessageBox 基础样式 */
 .message-box {
     position: relative;
-    width: 100%;
+    max-width: 85%;
+    min-width: 200px;
+    align-self: flex-start;
     display: flex;
     flex-direction: column;
     background: var(--surface-color);
+    border-radius: 8px;
+    margin: 4px 0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
 
+/* 用户消息靠右对齐 */
+.user-message {
+    align-self: flex-end;
 }
 
 /* 消息内容区域 */
 .message-content {
-    width: 100%;
+    width: fit-content;
+    min-width: 100%;
     font-family: var(--font-family);
     line-height: 1.6;
     color: var(--text-color);
     overflow-wrap: break-word;
-    padding: 12px;
+    padding: 12px 16px 8px;
+    border-radius: 8px 8px 0 0;
+    word-wrap: break-word;
+    word-break: break-word;
+    hyphens: auto;
+    user-select: text;
+    cursor: text;
 }
 
 /* Markdown 样式 */
@@ -191,6 +208,7 @@
 .markdown-body pre {
     background: var(--code-bg);
     overflow-x: auto;
+    max-width: 100%;
 }
 
 .markdown-body code {
@@ -202,6 +220,8 @@
 
 .markdown-body pre code {
     background: none;
+    user-select: text;
+    cursor: text;
 }
 
 .markdown-body blockquote {
@@ -214,12 +234,17 @@
 .message-divider {
     width: 100%;
     border-top: 1px dashed var(--border-color);
+    margin: 0;
 }
 
 /* 按钮区域 */
 .message-buttons {
     display: flex;
     gap: 4px;
+    padding: 4px 8px;
+    background: var(--surface-color);
+    border-radius: 0 0 8px 8px;
+    justify-content: flex-start;
 }
 
 .message-btn {
@@ -227,9 +252,13 @@
     border: none;
     color: var(--secondary-text-color);
     cursor: pointer;
-    padding: 4px 8px;
+    padding: 4px 6px;
     border-radius: 4px;
     transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9em;
 }
 
 .message-btn:hover {
@@ -240,7 +269,8 @@
 /* 听力模式遮罩 */
 .content-masked {
     filter: blur(5px);
-    user-select: none;
+    user-select: none !important;
+    cursor: default !important;
 }
 
 /* 主题适配变量 */
@@ -298,6 +328,8 @@
 .markdown-body table {
     border: 1px solid var(--table-border);
     margin: 8px 0;
+    max-width: 100%;
+    overflow-x: auto;
 }
 
 .markdown-body th {
@@ -364,6 +396,12 @@
     text-decoration: underline;
 }
 
+/* 图片自适应 */
+.markdown-body img {
+    max-width: 100%;
+    height: auto;
+}
+
 /* 磁贴交互效果 */
 .tile {
     position: absolute;
@@ -396,4 +434,78 @@
 .tile.resizing {
     transition: none;
     z-index: 100;
+}
+
+/* 添加消息框的悬停效果 */
+.message-box:hover {
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+}
+
+/* 添加响应式设计 */
+@media screen and (max-width: 768px) {
+    .message-box {
+        max-width: 95%;
+    }
+    
+    .message-buttons {
+        padding: 4px;
+    }
+    
+    .message-btn {
+        padding: 4px 6px;
+    }
+}
+
+/* 确保表格内容可以选择 */
+.markdown-body table td,
+.markdown-body table th {
+    user-select: text;
+    cursor: text;
+}
+
+/* 全局提示框样式 */
+.global-toast {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    pointer-events: none;
+    z-index: 10000;
+    animation: toast-in 0.3s ease;
+}
+
+.global-toast.fade-out {
+    animation: toast-out 0.3s ease forwards;
+}
+
+@keyframes toast-in {
+    from {
+        opacity: 0;
+        transform: translate(-50%, 10px);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+}
+
+@keyframes toast-out {
+    from {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+    to {
+        opacity: 0;
+        transform: translate(-50%, 10px);
+    }
+}
+
+/* 移除旧的消息框提示样式 */
+.message-toast {
+    display: none;
 }

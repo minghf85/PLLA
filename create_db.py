@@ -5,26 +5,6 @@ def create_database():
     conn = sqlite3.connect("plla_user.db")
     cursor = conn.cursor()
 
-    # 创建联系人表
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS contacts (
-        contact_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL UNIQUE,
-        description TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
-
-    # 创建场景表
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS scenarios (
-        scenario_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        scene_name TEXT NOT NULL UNIQUE,
-        description TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
-
     # 创建对话会话表
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS chat_sessions (
@@ -54,8 +34,6 @@ def create_database():
 
     # 创建索引以提高查询性能
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_messages_session ON messages (session_id)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_contact ON chat_sessions (contact_id)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_scenario ON chat_sessions (scenario_id)")
 
     # 提交更改
     conn.commit()
@@ -65,17 +43,8 @@ def insert_initial_data():
     """插入一些初始数据用于测试"""
     conn = sqlite3.connect("plla_user.db")
     cursor = conn.cursor()
-
-    # 插入示例联系人
     cursor.execute("""
-    INSERT OR IGNORE INTO contacts (name, description) VALUES 
-    ('default', '默认的AI助手角色')
-    """)
-
-    # 插入示例场景
-    cursor.execute("""
-    INSERT OR IGNORE INTO scenarios (scene_name, description) VALUES 
-    ('default', '默认对话场景')
+    
     """)
 
     conn.commit()

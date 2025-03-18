@@ -1265,17 +1265,22 @@ document.addEventListener('DOMContentLoaded', function() {
             renderHistoryList();
 
             // 听力模式切换
-            let isListeningMode = false;
+            let isListeningMode = false;//初始为关闭听力模式
             listeningModeBtn.addEventListener('click', () => {
                 isListeningMode = !isListeningMode;
                 const icon = listeningModeBtn.querySelector('i');
                 icon.classList.toggle('fa-eye');
                 icon.classList.toggle('fa-eye-slash');
                 
-                // 获取所有 AI 消息并切换模糊效果
+                // 获取所有 AI 消息，切换模糊效果，并修改现在AIMessage的isListeningMode状态
                 const aiMessages = messagesContainer.querySelectorAll('.ai-message .message-content');
                 aiMessages.forEach(message => {
-                    message.classList.toggle('content-masked');
+                //检查现在所有的AIMessage的isListeningMode状态是否和isListeningMode相同
+                if(AIMessage.instance.isListeningMode != isListeningMode){
+                    //切换模糊效果
+                    message.toggleVisibility();
+                }
+                
                 });
             });
 
@@ -1317,7 +1322,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             };
 
-            // 发送消息的函数
+            // 修改发送消息的函数
             const sendMessage = () => {
                 const message = input.value.trim();
                 if (message) {
@@ -1331,9 +1336,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     // 清空输入
                     input.value = '';
                     
-                    // 模拟AI回复，展示 Markdown 丰富文本效果
+                    // 模拟AI回复
                     setTimeout(async () => {
-                        const aiMsg = new AIMessage('');
+                        //创建一个新的AIMessage实例并传入现在的isListeningMode状态
+                        const aiMsg = new AIMessage('', {
+                            isListeningMode: isListeningMode
+                        });
                         messagesContainer.appendChild(aiMsg.element);
                         
                         const richContent = `
@@ -1455,7 +1463,10 @@ $$x = {-b \\pm \\sqrt{b^2-4ac} \\over 2a}$$
     class TileManager {
         constructor() {
             this.config = null;
-            this.gridConfig = null;
+            this.gridConfig = {
+                tile_size: 120,
+                gap_size: 10
+            };
             this.loadConfig();
         }
 
@@ -1475,12 +1486,6 @@ $$x = {-b \\pm \\sqrt{b^2-4ac} \\over 2a}$$
                     this.config.Learn_config.zh = {};
                 }
                 
-                // 确保使用正确的网格配置
-                this.gridConfig = this.config.Learn_config.zh.grid_config || {
-                    tile_size: 120,
-                    gap_size: 10
-                };
-                
                 await this.generateTiles();
             } catch (error) {
                 console.error('加载配置失败:', error);
@@ -1488,10 +1493,6 @@ $$x = {-b \\pm \\sqrt{b^2-4ac} \\over 2a}$$
                 this.config = {
                     Learn_config: {
                         zh: {
-                            grid_config: {
-                                tile_size: 120,
-                                gap_size: 10
-                            },
                             function_tiles: {},
                             contact: {},
                             scene: {},
@@ -1504,7 +1505,6 @@ $$x = {-b \\pm \\sqrt{b^2-4ac} \\over 2a}$$
                         }
                     }
                 };
-                this.gridConfig = this.config.Learn_config.zh.grid_config;
                 await this.generateTiles();
             }
         }
@@ -1946,26 +1946,6 @@ $$x = {-b \\pm \\sqrt{b^2-4ac} \\over 2a}$$
                 ],
                 ...options
             };
-            
-            // 初始化 marked 配置
-            if (typeof marked !== 'undefined') {
-                marked.setOptions({
-                    renderer: new marked.Renderer(),
-                    highlight: function(code, language) {
-                        if (typeof hljs !== 'undefined') {
-                            return hljs.highlightAuto(code).value;
-                        }
-                        return code;
-                    },
-                    gfm: true,
-                    breaks: true,
-                    sanitize: false,
-                    smartLists: true,
-                    smartypants: false,
-                    xhtml: false
-                });
-            }
-            
             this.element = this.createElement();
         }
 
@@ -2013,11 +1993,35 @@ $$x = {-b \\pm \\sqrt{b^2-4ac} \\over 2a}$$
             return messageBox;
         }
 
-        copyContent() {
+        async copyContent() {
             const content = this.element.querySelector('.message-content').textContent;
-            navigator.clipboard.writeText(content).then(() => {
-                console.log('已复制到剪贴板');
-            });
+            try {
+                await navigator.clipboard.writeText(content);
+                this.showGlobalToast('已复制到剪贴板');
+            } catch (err) {
+                console.error('复制失败:', err);
+                this.showGlobalToast('复制失败，请重试');
+            }
+        }
+
+        // 修改为全局提示
+        showGlobalToast(message) {
+            // 移除现有的toast
+            const existingToast = document.querySelector('.global-toast');
+            if (existingToast) {
+                existingToast.remove();
+            }
+
+            const toast = document.createElement('div');
+            toast.className = 'global-toast';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            // 2秒后自动消失
+            setTimeout(() => {
+                toast.classList.add('fade-out');
+                setTimeout(() => toast.remove(), 300);
+            }, 2000);
         }
 
         async streamContent(text) {
@@ -2138,18 +2142,135 @@ $$x = {-b \\pm \\sqrt{b^2-4ac} \\over 2a}$$
                     },
                     {
                         icon: 'fa-eye',
-                        title: '隐藏/显示',
+                        title: '显示',
                         onClick: () => this.toggleVisibility()
                     }
-                ]
+                ],
+                isListeningMode: false // 默认为关闭
             });
             this.element.classList.add('ai-message');
             
-            // 检查听力模式状态
-            const listeningMode = document.querySelector('.listening-mode .fa-eye-slash');
-            if (listeningMode) {
-                this.element.querySelector('.message-content').classList.add('content-masked');
+            // 初始化消息状态，跟随全局听力模式
+            
+            if (this.isListeningMode) {
+                const content = this.element.querySelector('.message-content');
+                content.classList.add('content-masked');
+                const button = this.element.querySelector('.message-btn[title="显示"]');
+                const eyeIcon = button?.querySelector('i');
+                if (eyeIcon) {
+                    eyeIcon.classList.remove('fa-eye');
+                    eyeIcon.classList.add('fa-eye-slash');
+                }
             }
         }
+
+        toggleVisibility() {
+            // 修改当前AIMessage的isListeningMode状态
+            this.isListeningMode = !this.isListeningMode;
+            
+            // 只修改内容区域的显示状态
+            const content = this.element.querySelector('.message-content');
+            content.classList.toggle('content-masked');
+            
+            // 修改按钮图标和标题
+            const button = this.element.querySelector('.message-btn[title="显示"], .message-btn[title="隐藏"]');
+            const eyeIcon = button?.querySelector('i');
+            if (eyeIcon) {
+                eyeIcon.classList.toggle('fa-eye');
+                eyeIcon.classList.toggle('fa-eye-slash');
+                button.title = this.isListeningMode ? '显示' : '隐藏';
+            }
+        }
+
+        speak() {
+            console.log('朗读功能待实现');
+            this.showGlobalToast('朗读功能开发中');
+        }
+
+        analyze() {
+            console.log('分析功能待实现');
+            this.showGlobalToast('分析功能开发中');
+        }
+
+        translate() {
+            console.log('翻译功能待实现');
+            this.showGlobalToast('翻译功能开发中');
+        }
     }
+
+    // TODO: 实现全局听力模式切换功能
+    // 1. 切换时更新所有消息的显示状态
+    // 2. 更新听力模式按钮的图标
+    // 3. 保存听力模式状态到 localStorage
+    function setupListeningMode() {
+        const listeningModeBtn = document.querySelector('.listening-mode-btn');
+        if (!listeningModeBtn) return;
+
+        // 初始化听力模式状态
+        const savedListeningMode = localStorage.getItem('listeningMode') === 'true';
+        if (savedListeningMode) {
+            document.body.classList.add('listening-mode');
+            const btnIcon = listeningModeBtn.querySelector('i');
+            if (btnIcon) {
+                btnIcon.classList.remove('fa-eye');
+                btnIcon.classList.add('fa-eye-slash');
+            }
+            
+            // 更新所有现有消息的状态
+            document.querySelectorAll('.ai-message').forEach(messageEl => {
+                const content = messageEl.querySelector('.message-content');
+                content.classList.add('content-masked');
+                const button = messageEl.querySelector('.message-btn[title="显示"], .message-btn[title="隐藏"]');
+                const eyeIcon = button?.querySelector('i');
+                if (eyeIcon) {
+                    eyeIcon.classList.remove('fa-eye');
+                    eyeIcon.classList.add('fa-eye-slash');
+                    button.title = '显示';
+                }
+            });
+        }
+
+        listeningModeBtn.addEventListener('click', () => {
+            const isListeningMode = !document.body.classList.contains('listening-mode');
+            document.body.classList.toggle('listening-mode');
+            
+            // 更新所有消息的状态
+            document.querySelectorAll('.ai-message').forEach(messageEl => {
+                const content = messageEl.querySelector('.message-content');
+                const button = messageEl.querySelector('.message-btn[title="显示"], .message-btn[title="隐藏"]');
+                const eyeIcon = button?.querySelector('i');
+                
+                if (isListeningMode) {
+                    content.classList.add('content-masked');
+                    if (eyeIcon) {
+                        eyeIcon.classList.remove('fa-eye');
+                        eyeIcon.classList.add('fa-eye-slash');
+                        button.title = '显示';
+                    }
+                } else {
+                    content.classList.remove('content-masked');
+                    if (eyeIcon) {
+                        eyeIcon.classList.add('fa-eye');
+                        eyeIcon.classList.remove('fa-eye-slash');
+                        button.title = '隐藏';
+                    }
+                }
+            });
+
+            // 更新按钮图标
+            const btnIcon = listeningModeBtn.querySelector('i');
+            if (btnIcon) {
+                btnIcon.classList.toggle('fa-eye');
+                btnIcon.classList.toggle('fa-eye-slash');
+            }
+
+            // 保存状态到 localStorage
+            localStorage.setItem('listeningMode', isListeningMode);
+        });
+    }
+
+    // 在文档加载完成后初始化听力模式
+    document.addEventListener('DOMContentLoaded', () => {
+        setupListeningMode();
+    });
 });

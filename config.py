@@ -64,10 +64,10 @@ class Config:
 
     def get_grid_config(self, lang='zh'):
         """获取网格配置"""
-        return self.config.get('Learn_config', {}).get(lang, {}).get('grid_config', {
+        return {
             'tile_size': 120,
             'gap_size': 10
-        })
+        }
 
     def update_tile_state(self, tile_id, state):
         """更新磁贴状态"""
