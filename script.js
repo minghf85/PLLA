@@ -790,15 +790,13 @@ document.addEventListener('DOMContentLoaded', function() {
         bindEvents() {
             // 双击事件
             this.element.addEventListener('dblclick', () => {
-                // 进入默认场景对话
-                window.location.href = `chat.html?contact=${this.name}&scene=default`;
+                console.log('双击联系人:', this.title);
             });
         }
 
         // 处理拖入场景
         handleSceneDrop(sceneTile) {
-            const sceneName = sceneTile.scenario.scene_name;
-            window.location.href = `chat.html?contact=${this.name}&scene=${sceneName}`;
+            console.log('拖入场景:', sceneTile.title);
         }
     }
 
@@ -818,17 +816,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         bindEvents() {
-            this.element.addEventListener('click', () => this.onClick());
-        }
-
-        onClick() {
-            // 打开学习场景
-            console.log('打开场景:', this.scenario);
-        }
-
-        onDoubleClick(e) {
-            console.log('编辑场景:', this.scenario);
-            // 实现场景编辑界面
+            this.element.addEventListener('dblclick', () => {
+                console.log('双击场景:', this.title);
+            });
         }
 
         onOverlapTimeout() {
@@ -1336,7 +1326,7 @@ document.addEventListener('DOMContentLoaded', function() {
             };
 
             // 修改发送消息的函数
-            const sendMessage = () => {
+            const sendMessage = async () => {
                 const message = input.value.trim();
                 if (message) {
                     // 创建用户消息
@@ -1349,71 +1339,42 @@ document.addEventListener('DOMContentLoaded', function() {
                     // 清空输入
                     input.value = '';
                     
-                    // 模拟AI回复
-                    setTimeout(async () => {
-                        // 创建一个新的AIMessage实例并传入当前的Global_isListeningMode状态
-                        const aiMsg = new AIMessage('', {
-                            isListeningMode: Global_isListeningMode
+                    // 创建 AI 消息实例
+                    const aiMsg = new AIMessage('', {
+                        isListeningMode: Global_isListeningMode
+                    });
+                    messagesContainer.appendChild(aiMsg.element);
+
+                    try {
+                        // 发送请求到后端
+                        const response = await fetch('/api/chat', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ message })
                         });
-                        messagesContainer.appendChild(aiMsg.element);
-                        
-                        const richContent = `
-# Markdown 展示示例
 
-这是一段普通文本，展示基本的 *斜体* 和 **粗体** 效果。
+                        // 创建 EventSource 来接收流式响应
+                        const reader = response.body.getReader();
+                        const decoder = new TextDecoder();
+                        let token = '';
 
-## 代码示例
-\`\`\`python
-def hello_world():
-    print("你好，世界！")
-    return True
-\`\`\`
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+                            
+                            token = decoder.decode(value, { stream: true });
+                            console.log(token);
+                            await aiMsg.streamContent(token);
+                        }
 
-<ruby>
-  日本語 <rp>(</rp><rt>にほんご</rt><rp>)</rp>
-</ruby>
-を
-<ruby>
-  勉強 <rp>(</rp><rt>べんきょう</rt><rp>)</rp>
-</ruby>
-しています。
-
-## 列表示例
-- 无序列表项 1
-- 无序列表项 2
-  - 嵌套列表项
-  - 另一个嵌套项
-
-1. 有序列表项 1
-2. 有序列表项 2
-
-## 引用和高亮
-> 这是一段引用文本
-> 可以有多行
-
-这段文本包含 \`行内代码\` 和 ==高亮文本==
-
-## 表格示例
-| 功能 | 说明 |
-|------|------|
-| 粗体 | **文本** |
-| 斜体 | *文本* |
-| 代码 | \`代码\` |
-
-## 特殊标记
-- ✅ 已完成任务
-- ❌ 未完成任务
-- ⚠️ 警告信息
-- 💡 提示信息
-
-## 数学公式
-当 $a \\ne 0$ 时，方程 $ax^2 + bx + c = 0$ 有两个解：
-$$x = {-b \\pm \\sqrt{b^2-4ac} \\over 2a}$$
-`;
-                        
-                        await aiMsg.streamContent(richContent);
                         scrollToLatest();
-                    }, 1000);
+                        
+                    } catch (error) {
+                        console.error('发送消息失败:', error);
+                        aiMsg.streamContent('抱歉，发生了错误，请稍后重试。');
+                    }
                 }
             };
 
@@ -2037,51 +1998,49 @@ $$x = {-b \\pm \\sqrt{b^2-4ac} \\over 2a}$$
             }, 2000);
         }
 
-        async streamContent(text) {
+        async streamContent(token) {
+            if (token === '\n\n') {
+                token = '\n';
+            }
             const contentArea = this.element.querySelector('.message-content');
-            contentArea.innerHTML = '';
-            
-            let buffer = '';
-            const chars = Array.from(text);
-            
-            for (let char of chars) {
-                buffer += char;
-                
-                // 每次累积一定数量的字符或遇到换行时进行一次渲染
-                if (char === '\n' || buffer.length % 10 === 0) {
-                    if (typeof marked !== 'undefined') {
-                        try {
-                            contentArea.innerHTML = marked.parse(buffer);
-                            
-                            // 代码高亮
-                            contentArea.querySelectorAll('pre code').forEach((block) => {
-                                if (typeof hljs !== 'undefined') {
-                                    hljs.highlightElement(block);
-                                }
-                            });
-                            
-                            // 数学公式渲染
-                            if (typeof MathJax !== 'undefined') {
-                                MathJax.typesetPromise([contentArea]);
-                            }
-                        } catch (e) {
-                            contentArea.textContent = buffer;
-                        }
-                    } else {
-                        contentArea.textContent = buffer;
-                    }
-                    
-                    // 滚动到底部
-                    this.scrollToBottom();
-                    
-                    // 添加延迟以实现打字效果
-                    await new Promise(resolve => setTimeout(resolve, 30));
-                }
+            if (!this.buffer) {
+                this.buffer = '';  // 初始化buffer作为类属性
             }
             
+            // 累积接收到的内容
+            this.buffer += token;
+            contentArea.innerHTML = this.buffer;
+            // 每累积10个字符进行一次渲染
+            if (this.buffer.length % 10 === 0) {
+                console.log(this.buffer);
+                if (typeof marked !== 'undefined') {
+                    try {
+                        contentArea.innerHTML = marked.parse(this.buffer);
+                        
+                        // 代码高亮
+                        contentArea.querySelectorAll('pre code').forEach((block) => {
+                            if (typeof hljs !== 'undefined') {
+                                hljs.highlightElement(block);
+                            }
+                        });
+                        
+                        // 数学公式渲染
+                        if (typeof MathJax !== 'undefined') {
+                            MathJax.typesetPromise([contentArea]);
+                        }
+                    } catch (e) {
+                        contentArea.textContent = this.buffer;
+                    }
+                } else {
+                    contentArea.textContent = this.buffer;
+                }
+                
+                // 滚动到底部
+                this.scrollToBottom();
+            }
             // 最后一次完整渲染
             if (typeof marked !== 'undefined') {
-                contentArea.innerHTML = marked.parse(buffer);
+                contentArea.innerHTML = marked.parse(this.buffer);
                 
                 // 最终的代码高亮
                 contentArea.querySelectorAll('pre code').forEach((block) => {
@@ -2162,6 +2121,7 @@ $$x = {-b \\pm \\sqrt{b^2-4ac} \\over 2a}$$
             });
             this.element.classList.add('ai-message');
             this.isListeningMode = options.isListeningMode;
+            this.cachedContent = ''; // 初始化缓存内容
             
             // 初始化消息状态，跟随全局听力模式
             if(this.isListeningMode){
@@ -2206,10 +2166,6 @@ $$x = {-b \\pm \\sqrt{b^2-4ac} \\over 2a}$$
         }
     }
 
-    // TODO: 实现全局听力模式切换功能
-    // 1. 切换时更新所有消息的显示状态
-    // 2. 更新听力模式按钮的图标
-    // 3. 保存听力模式状态到 localStorage
     function setupListeningMode() {
         const listeningModeBtn = document.querySelector('.listening-mode-btn');
         if (!listeningModeBtn) return;

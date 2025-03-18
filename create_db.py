@@ -9,12 +9,11 @@ def create_database():
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS chat_sessions (
         session_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        contact_id INTEGER NOT NULL,
-        scenario_id INTEGER NOT NULL,
+        session_name TEXT NOT NULL,
+        contact_name TEXT NOT NULL,
+        scenario_name TEXT NOT NULL,
         start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        last_message_time TIMESTAMP,
-        FOREIGN KEY (contact_id) REFERENCES contacts (contact_id),
-        FOREIGN KEY (scenario_id) REFERENCES scenarios (scenario_id)
+        last_message_time TIMESTAMP
     )
     """)
 

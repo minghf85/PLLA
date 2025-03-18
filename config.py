@@ -123,3 +123,20 @@ class Config:
     def get_chat_tile_config(self):
         """获取聊天磁贴配置"""
         return self.config.get('Learn_config', {}).get('zh', {}).get('chat_tile', {})
+    
+class Platform:
+    def __init__(self):
+        self.url = None
+        self.model = None
+        self.api_key = None
+        self.load_config()
+
+    def load_config(self):
+        with open('config.json', 'r', encoding='utf-8') as f:
+            self.config = json.load(f)
+            # 获取第一个平台的配置
+            first_platform = list(self.config['Agent_config'].keys())[0]
+            self.url = self.config['Agent_config'][first_platform]['url']
+            self.model = self.config['Agent_config'][first_platform]['model'] 
+            self.api_key = self.config['Agent_config'][first_platform]['api_key']
+

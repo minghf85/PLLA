@@ -1,10 +1,12 @@
-from flask import Flask, request, jsonify, send_from_directory
-from config import Config
+from flask import Flask, request, jsonify, send_from_directory, Response, stream_with_context
+from config import Config, Platform
+from Agent import PLLAgent
 import sqlite3
 import os
 
 app = Flask(__name__)
 config = Config()
+agent = PLLAgent(Platform())
 
 # 获取当前文件夹路径
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -53,6 +55,39 @@ def add_scene():
         success = config.add_scene('zh', data)
         return jsonify({'success': success})
     except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/chat', methods=['POST'])
+def chat():
+    try:
+        data = request.json
+        message = data.get('message', '')
+        history = data.get('history', [])  # 添加历史消息的获取
+        
+        def generate():
+            prompt = "你是一个智能AI助手，请用中文回答用户的问题。"
+            
+            # 确保消息历史格式正确
+            if isinstance(message, str):
+                current_message = [{"role": "user", "content": message}]
+                messages = history + current_message if history else current_message
+            else:
+                messages = message  # 如果已经是格式化的消息列表则直接使用
+                
+            for chunk in agent.gen_normal_response(prompt=prompt, historys=messages):
+                if chunk:
+                    # 确保正确的SSE格式
+                    yield chunk
+        
+        return Response(stream_with_context(generate()), 
+                       mimetype='text/event-stream',
+                       headers={
+                           'Cache-Control': 'no-cache',
+                           'X-Accel-Buffering': 'no'
+                       })
+        
+    except Exception as e:
+        print(f"Error in chat endpoint: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':

@@ -1,32 +1,4 @@
-```
-"佐藤": {
-                    "T_lang": "ja",
-                    "prompt": "你是一个日语学习伙伴，帮助我学习日语。",#人物设定
-                    "referance": "",#参考知识库
-                    "scene": "default",#场景
-                    "speed": 1.0,
-                    "voice_engine": "RealtimeTTS",
-                    "icon": "./assets/avatars/default_avatar.png",
-                    "tile": {
-                        "position": "translate3d(120px, 600px, 0px)",
-                        "size": "1x1"
-                    }
-                },
-```
-
-<ruby>
-  漢<rp>(</rp><rt>かん</rt><rp>)</rp>
-  字<rp>(</rp><rt>じ</rt><rp>)</rp>
-は<rp>(</rp><rt></rt><rp>)</rp>
-日<rp>(</rp><rt>に</rt><rp>)</rp>
-本<rp>(</rp><rt>ほん</rt><rp>)</rp>
-語<rp>(</rp><rt>ご</rt><rp>)</rp>
-の<rp>(</rp><rt></rt><rp>)</rp>
-文<rp>(</rp><rt>ぶん</rt><rp>)</rp>
-字<rp>(</rp><rt>じ</rt><rp>)</rp>
-です。
-</ruby>
-
+const richContent = `
 # Markdown 展示示例
 
 这是一段普通文本，展示基本的 *斜体* 和 **粗体** 效果。
@@ -58,7 +30,7 @@ def hello_world():
 > 这是一段引用文本
 > 可以有多行
 
-这段文本包含 `行内代码` 和 ==高亮文本==
+这段文本包含 \`行内代码\` 和 ==高亮文本==
 
 ## 表格示例
 | 功能 | 说明 |
@@ -74,11 +46,12 @@ def hello_world():
 - 💡 提示信息
 
 ## 数学公式
-当 $a \ne 0$ 时，方程 $ax^2 + bx + c = 0$ 有两个解：
-$$x = {-b \pm \sqrt{b^2-4ac} \over 2a}$$
+当 $a \\ne 0$ 时，方程 $ax^2 + bx + c = 0$ 有两个解：
+$$x = {-b \\pm \\sqrt{b^2-4ac} \\over 2a}$$
 ---
 <details>
   <summary>分析</summary>
   此处可书写文本
   嗯，是可以书写文本的
 </details>
+`;
