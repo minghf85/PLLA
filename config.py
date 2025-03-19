@@ -22,54 +22,7 @@ class Config:
         except Exception as e:
             print(f"错误：保存配置文件时发生异常: {str(e)}")
             return False
-
-    def get_learn_config(self, lang):
-        return self.config.get('Learn_config', {}).get(lang, {})
-
-    def get_engine_config(self):
-        return self.config.get('Engine_config', {})
-
-    def get_chat_config(self):
-        return self.config.get('Learn_config', {}).get('chat', {}).get('chat_tile', {})
-
-    def add_contact(self, lang, contact_data):
-        try:
-            contacts = self.config['Learn_config'][lang]['contact']
-            contacts[contact_data['name']] = {
-                'T_lang': contact_data['T_lang'],
-                'prompt': contact_data['prompt'],
-                'referance': '',
-                'scene': '',
-                'speed': 1.0,
-                'voice_engine': contact_data['voice_engine'],
-                'icon': contact_data.get('icon', 'default_avatar.png')
-            }
-            return self.save_config()
-        except Exception as e:
-            print(f"错误：添加联系人时发生异常: {str(e)}")
-            return False
-
-    def add_scene(self, lang, scene_data):
-        try:
-            scenes = self.config['Learn_config'][lang]['scene']
-            scenes[scene_data['name']] = {
-                'scene_name': scene_data['name'],
-                'scene_prompt': scene_data.get('prompt', ''),
-                'scene_referance': ''
-            }
-            return self.save_config()
-        except Exception as e:
-            print(f"错误：添加场景时发生异常: {str(e)}")
-            return False
-
-    def get_grid_config(self, lang='zh'):
-        """获取网格配置"""
-        return {
-            'tile_size': 120,
-            'gap_size': 10
-        }
-
-    def update_tile_state(self, tile_id, state):
+    def update_tile_state(self, mother_language, tile_id, state):
         """更新磁贴状态"""
         try:
             # 移除width和height，只保留position和size
@@ -78,51 +31,73 @@ class Config:
                 'size': state.get('size')
             }
             
+            # 将 position 从 translate3d 格式转换为数组格式
+            if state['position']:
+                # 从 translate3d(Xpx, Ypx, Zpx) 提取数值
+                pos_string = state['position']
+                # 提取括号内的内容
+                pos_string = pos_string[pos_string.find('(')+1:pos_string.find(')')]
+                # 分割并清理每个值
+                pos_parts = [part.strip().replace('px', '') for part in pos_string.split(',')]
+                # 转换为浮点数
+                pos_values = [float(x) for x in pos_parts]
+                
+                # 获取网格大小
+                grid_size = float(self.config.get('grid_config', {}).get('tile_size', 120))
+                
+                # 使用round确保正确的四舍五入，并转换为整数
+                state['position'] = [
+                    int(round(pos_values[0]/grid_size)),
+                    int(round(pos_values[1]/grid_size)),
+                    int(pos_values[2])
+                ]
+                
+                # 验证计算结果
+                print(f"Position conversion:{tile_id}, raw:{pos_string} -> values:{pos_values} -> final:{state['position']}")
+            
             if tile_id == 'chat_tile':
-                if 'chat_tile' not in self.config['Learn_config']['zh']:
-                    self.config['Learn_config']['zh']['chat_tile'] = {}
-                self.config['Learn_config']['zh']['chat_tile']['tile'] = state
+                self.config['Learn_config']['chat_tile']['tile'] = state
             else:
                 # 添加对tile_id格式的验证
                 if '_' not in tile_id:
                     raise ValueError(f"无效的tile_id格式: {tile_id}")
                     
                 tile_type, name = tile_id.split('_', 1)
-                if tile_type == 'contact':
-                    self.config['Learn_config']['zh']['contact'][name]['tile'] = state
-                elif tile_type == 'scenario':
-                    self.config['Learn_config']['zh']['scene'][name]['tile'] = state
-                elif tile_type == 'function':
-                    self.config['Learn_config']['zh']['function_tiles'][name]['tile'] = state
+                
+                if tile_type == 'function':
+                    # 在function_tiles数组中查找并更新对应的功能磁贴
+                    for func_tile in self.config['Learn_config']['function_tiles']:
+                        if func_tile['name'] == name:
+                            func_tile['tile'] = state
+                            break
                 else:
-                    raise ValueError(f"未知的磁贴类型: {tile_type}")
+                    # 确保语言配置存在
+                    if mother_language not in self.config['Learn_config']:
+                        self.config['Learn_config'][mother_language] = {
+                            'contacts': [],
+                            'scenes': []
+                        }
+                    
+                    if tile_type == 'contact':
+                        # 在contacts数组中查找并更新对应的联系人
+                        for contact in self.config['Learn_config'][mother_language]['contacts']:
+                            if contact['name'] == name:
+                                contact['tile'] = state
+                                break
+                    elif tile_type == 'scenario':
+                        # 在scenes数组中查找并更新对应的场景
+                        for scene in self.config['Learn_config'][mother_language]['scenes']:
+                            if scene['name'] == name:
+                                scene['tile'] = state
+                                break
+                    else:
+                        raise ValueError(f"未知的磁贴类型: {tile_type}")
             
             return self.save_config()
         except Exception as e:
             print(f"错误：更新磁贴状态时发生异常: {str(e)}")
             return False
 
-    def add_chat_tile(self, chat_data):
-        try:
-            chat_tile = {
-                'title': chat_data['title'],
-                'content': chat_data['content'],
-                'tile': {
-                    'position': chat_data['tile']['position'],
-                    'size': chat_data['tile']['size'],
-                    'width': chat_data['tile']['width'],
-                    'height': chat_data['tile']['height']
-                }
-            }
-            self.config['Learn_config']['zh']['chat']['chat_tile'] = chat_tile
-            return self.save_config()
-        except Exception as e:
-            print(f"错误：添加聊天磁贴时发生异常: {str(e)}")
-            return False
-
-    def get_chat_tile_config(self):
-        """获取聊天磁贴配置"""
-        return self.config.get('Learn_config', {}).get('zh', {}).get('chat_tile', {})
     
 class Platform:
     def __init__(self):
@@ -135,8 +110,20 @@ class Platform:
         with open('config.json', 'r', encoding='utf-8') as f:
             self.config = json.load(f)
             # 获取第一个平台的配置
-            first_platform = list(self.config['Agent_config'].keys())[0]
-            self.url = self.config['Agent_config'][first_platform]['url']
-            self.model = self.config['Agent_config'][first_platform]['model'] 
-            self.api_key = self.config['Agent_config'][first_platform]['api_key']
+            first_platform = list(self.config['LLM_config'].keys())[0]
+            self.url = self.config['LLM_config'][first_platform]['url']
+            self.model = self.config['LLM_config'][first_platform]['model'] 
+            self.api_key = self.config['LLM_config'][first_platform]['api_key']
 
+class Input_config:
+    def __init__(self):
+        self.contact_name = None
+        self.contact_prompt = None
+        self.scene_name = None
+        self.scene_prompt = None
+        self.history = None
+        self.load_config()
+
+    def load_config(self):
+        #从当前ChatTile中获取
+        pass

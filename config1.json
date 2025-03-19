@@ -1,135 +1,176 @@
 {
+    "grid_config": {
+        "tile_size": 120,
+        "gap_size": 10
+    },
     "Learn_config": {
-        "zh": {
-            "grid_config": {
-                "tile_size": 120,
-                "gap_size": 10
+        "function_tiles": [
+
+            {   "name": "menu",
+                "tile": {
+                    "position": [3, 2, 0], // translate3d(0px, 240px, 0px) -> [0, 2, 0]
+                    "size": "1x1"
+                }
             },
-            "contact": {
-                "佐藤": {
-                    "T_lang": "ja",
+            {   "name": "search",
+                "tile": {
+                    "position": [3, 2, 0], // translate3d(360px, 240px, 0px) -> [3, 2, 0]
+                    "size": "1x1"
+                }
+            },
+            {   "name": "theme",
+                "tile": {
+                    "position": [1, 2, 0], // translate3d(120px, 240px, 0px) -> [1, 2, 0]
+                    "size": "1x1"
+                }
+            },
+            {   "name": "add-contact",
+                "tile": {
+                    "position": [1, 0, 0], // translate3d(120px, 0px, 0px) -> [1, 0, 0]
+                    "size": "1x1"
+                }
+            },
+            {   "name": "add-scenario",
+                "tile": {
+                    "position": [0, 0, 0], // translate3d(0px, 0px, 0px) -> [0, 0, 0]
+                    "size": "1x1"
+                }
+            },
+            {   "name": "edit-contact",
+                "tile": {
+                    "position": [0, 1, 0], // translate3d(0px, 120px, 0px) -> [0, 1, 0]
+                    "size": "1x1"
+                }
+            },
+            {   "name": "edit-scenario",
+                "tile": {
+                    "position": [1, 1, 0], // translate3d(120px, 120px, 0px) -> [1, 1, 0]
+                    "size": "1x1"
+                }
+            },
+            {   "name": "save",
+                "tile": {
+                    "position": [2, 2, 0], // translate3d(240px, 240px, 0px) -> [2, 2, 0]
+                    "size": "1x1"
+                }
+            }
+        ],
+        "chat_tile": {
+            "tile": {
+                "position": [5, 0, 0], // translate3d(600px, 0px, 0px) -> [5, 0, 0]
+                "size": "10x7"
+            }
+        },
+        "zh": {
+            "contacts": [
+                {
+                    "name": "佐藤さん",
+                    "target_language": "ja",
                     "prompt": "你是一个日语学习伙伴，帮助我学习日语。",
-                    "referance": "",
                     "scene": "default",
                     "speed": 1.0,
                     "voice_engine": "RealtimeTTS",
                     "icon": "./assets/avatars/default_avatar.png",
                     "tile": {
-                        "position": "translate3d(1200px, 120px, 0px)",
+                        "position": [1, 5, 0], // translate3d(120px, 600px, 0px) -> [1, 5, 0]
                         "size": "1x1"
                     }
                 },
-                "Alice": {
-                    "T_lang": "en",
+                {
+                    "name": "Alice",
+                    "target_language": "en",
                     "prompt": "你是一个英语学习伙伴，帮助我学习英语。",
-                    "referance": "",
                     "scene": "default",
                     "speed": 1.0,
                     "voice_engine": "GPT_SoVits",
                     "icon": "./assets/avatars/default_avatar.png",
                     "tile": {
-                        "position": "translate3d(840px, 240px, 0px)",
+                        "position": [0, 5, 0], // translate3d(0px, 600px, 0px) -> [0, 5, 0]
                         "size": "1x1"
                     }
                 }
-            },
-            "scene": {
-                "咖啡厅对话": {
-                    "scene_name": "咖啡厅对话",
-                    "scene_prompt": "在咖啡厅中对话",
-                    "scene_referance": "",
+            ],
+            "scenes": [
+                {
+                    "name": "咖啡厅对话",
+                    "prompt": "在咖啡厅中对话",
                     "tile": {
-                        "position": "translate3d(480px, 600px, 0px)",
+                        "position": [1, 6, 0], // translate3d(120px, 720px, 0px) -> [1, 6, 0]
                         "size": "1x1"
                     }
                 },
-                "商务会议": {
-                    "scene_name": "商务会议",
-                    "scene_prompt": "在商务会议中对话",
-                    "scene_referance": "",
+                {
+                    "name": "学校",
+                    "prompt": "在学校中对话",
                     "tile": {
-                        "position": "translate3d(1320px, 120px, 0px)",
-                        "size": "1x1"
-                    }
-                },
-                "学校": {
-                    "scene_name": "学校",
-                    "scene_prompt": "在学校中对话",
-                    "scene_referance": "",
-                    "tile": {
-                        "position": "translate3d(1080px, 120px, 0px)",
-                        "size": "1x1"
-                    }
-                },
-                "医院": {
-                    "scene_name": "医院",
-                    "scene_prompt": "在医院中对话",
-                    "scene_referance": "",
-                    "tile": {
-                        "position": "translate3d(840px, 480px, 0px)",
+                        "position": [0, 6, 0], // translate3d(0px, 720px, 0px) -> [0, 6, 0]
                         "size": "1x1"
                     }
                 }
-            },
-            "function_tiles": {
-                "menu": {
-                    "tile": {
-                        "position": "translate3d(600px, 0px, 0px)",
-                        "size": "1x1"
-                    }
-                },
-                "search": {
-                    "tile": {
-                        "position": "translate3d(720px, 0px, 0px)",
-                        "size": "1x1"
-                    }
-                },
-                "theme": {
-                    "tile": {
-                        "position": "translate3d(1680px, 120px, 0px)",
-                        "size": "1x1"
-                    }
-                },
-                "add-contact": {
-                    "tile": {
-                        "position": "translate3d(0px, 0px, 0px)",
-                        "size": "1x1"
-                    }
-                },
-                "add-scenario": {
-                    "tile": {
-                        "position": "translate3d(120px, 0px, 0px)",
-                        "size": "1x1"
-                    }
-                },
-                "edit-contact": {
-                    "tile": {
-                        "position": "translate3d(360px, 0px, 0px)",
-                        "size": "1x1"
-                    }
-                },
-                "edit-scenario": {
-                    "tile": {
-                        "position": "translate3d(480px, 0px, 0px)",
-                        "size": "1x1"
-                    }
-                },
-                "save": {
-                    "tile": {
-                        "position": "translate3d(600px, 240px, 0px)",
-                        "size": "1x1"
-                    }
-                }
-            },
-            "chat_tile": {
-                "tile": {
-                    "position": "translate3d(1080px, 360px, 0px)",
-                    "size": "5x7"
-                }
-            }
+            ]
         },
-        "en": {},
-        "ja": {}
+        "en": {
+            "contacts": [
+                {
+                    "name": "佐藤",
+                    "target_language": "ja",
+                    "prompt": "You are an English learning partner, helping me learn Japanese.",
+                    "scene": "default",
+                    "speed": 1.0,
+                    "voice_engine": "RealtimeTTS",
+                    "icon": "./assets/avatars/default_avatar.png",
+                    "tile": {
+                        "position": [1, 5, 0], // translate3d(120px, 600px, 0px) -> [1, 5, 0]
+                        "size": "1x1"
+                    }
+                }
+            ],
+            "scenes": [
+                {
+                    "name": "Business Meeting",
+                    "prompt": "Practice conversations in a business meeting.",
+                    "tile": {
+                        "position": [2, 6, 0], // translate3d(240px, 720px, 0px) -> [2, 6, 0]
+                        "size": "1x1"
+                    }
+                }
+            ]
+        },
+        "ja": {
+            "contacts": [
+                {
+                    "name": "Alice",
+                    "target_language": "en",
+                    "prompt": "あなたは日本語学習パートナーで、私が英語を学ぶのを手伝ってくれます。",
+                    "scene": "default",
+                    "speed": 1.0,
+                    "voice_engine": "GPT_SoVits",
+                    "icon": "./assets/avatars/default_avatar.png",
+                    "tile": {
+                        "position": [0, 5, 0], // translate3d(0px, 600px, 0px) -> [0, 5, 0]
+                        "size": "1x1"
+                    }
+                }
+            ],
+            "scenes": [
+                {
+                    "name": "カフェでの会話",
+                    "prompt": "カフェでの会話を練習します。",
+                    "tile": {
+                        "position": [1, 6, 0], // translate3d(120px, 720px, 0px) -> [1, 6, 0]
+                        "size": "1x1"
+                    }
+                },
+                {
+                    "name": "病院",
+                    "prompt": "病院での会話を練習します。",
+                    "tile": {
+                        "position": [3, 6, 0], // translate3d(360px, 720px, 0px) -> [3, 6, 0]
+                        "size": "1x1"
+                    }
+                }
+            ]
+        }
     },
     "Engine_config": {
         "TTS": {
@@ -143,24 +184,24 @@
         },
         "STT": {
             "RealtimeSTT": {
-                "engine": "Kokoros"
+                "engine": "whisper-base"
             }
         }
     },
-    "Agent_config": {
+    "LLM_config": {
         "ollama": {
-            "url": "http://127.0.0.1:11434",
+            "url": "http://127.0.0.1:11434/v1",
             "model": "qwen2.5:14b",
             "api_key": "ollama"
-        },
-        "openai": {
-            "url": "https://api.openai.com/v1",
-            "model": "gpt-4o-mini",
-            "api_key": ""
         },
         "deepseek": {
             "url": "https://api.deepseek.com/v1",
             "model": "deepseek-chat",
+            "api_key": "sk-b81b3624588945e38963a70c5d6bd230"
+        },
+        "openai": {
+            "url": "https://api.openai.com/v1",
+            "model": "gpt-4o-mini",
             "api_key": ""
         }
     }

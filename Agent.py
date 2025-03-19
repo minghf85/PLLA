@@ -1,13 +1,17 @@
 from openai import OpenAI
 import ollama
 class PLLAgent:#PLLAgent是基于LLM的Agent，personal language learning agent，用于执行各种任务。输出为markdown格式
-    def __init__(self, platform):
+    def __init__(self, platform, Input_config=None):
+        self.Input_config = Input_config
         self.platform = platform
         self.client = OpenAI(api_key=self.platform.api_key, base_url=self.platform.url)
-    def run(self):
-        pass
+        self.messages = self.gen_messages(self.Input_config)
 
-    def gen_normal_response(self, prompt="你是一个ai助手", historys=[]):#根据prompt和history生成回复
+    def gen_messages(self, Input_config):
+        #生成合适的prompt
+        return f"你是一个智能AI助手，请用中文回答用户的问题。"
+    
+    def gen_normal_response(self, prompt, historys=[]):#根据prompt和history生成回复
         try:
             # 构建消息列表
             if isinstance(historys, str):

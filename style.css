@@ -906,3 +906,54 @@ body.dark-mode .theme-btn {
     100% { opacity: 0; transform: translate(-50%, -20px); }
 }
 
+/* 设置对话框样式 */
+.settings-modal .modal-content {
+    background: var(--surface-color);
+    padding: 20px;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 400px;
+}
+
+.settings-modal .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.settings-modal .close-btn {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    color: var(--text-color);
+}
+
+.settings-modal .language-select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--background-color);
+    color: var(--text-color);
+    margin-top: 8px;
+}
+
+/* 全局提示样式 */
+.global-toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 4px;
+    z-index: 1100;
+}
+
+.global-toast.fade-out {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}

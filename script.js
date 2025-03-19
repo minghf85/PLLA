@@ -18,8 +18,21 @@ class ChatHistory {
     }
 }
 
+// 将 calculatePosition 移到全局作用域
+function calculatePosition(position) {
+    if (!Array.isArray(position) || position.length !== 3) {
+        return 'translate3d(0px, 0px, 0px)';
+    }
+    const gridSize = Global_grid_config.tile_size;
+    return `translate3d(${position[0] * gridSize}px, ${position[1] * gridSize}px, ${position[2]}px)`;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    // 从 localStorage 获取母语设置，默认为 "zh"
     Global_isListeningMode = false;
+    mother_language = localStorage.getItem('mother_language') || "zh";
+    Global_config = Load_config();
+    Global_grid_config = Global_config.grid_config || {tile_size: 120, gap_size: 10};
     const menuToggle = document.getElementById('menu-toggle');
     const sidebar = document.getElementById('sidebar');
     const mainContent = document.querySelector('.main-content');
@@ -27,6 +40,107 @@ document.addEventListener('DOMContentLoaded', function() {
     const sections = document.querySelectorAll('.contacts-section, .scenarios-section');
     const themeBtn = document.querySelector('.theme-btn');
     
+    // 添加语言设置功能
+    const settingsLink = document.querySelector('.sidebar-content a[href="#"][title="设置"]');
+    if (settingsLink) {
+        settingsLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            showLanguageSettings();
+        });
+    }
+
+    // 创建语言设置对话框
+    function showLanguageSettings() {
+        // 移除已存在的对话框
+        const existingModal = document.querySelector('.settings-modal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        const modal = document.createElement('div');
+        modal.className = 'settings-modal modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>语言设置</h3>
+                    <button class="close-btn"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="mother-language">选择母语:</label>
+                        <select id="mother-language" class="language-select">
+                            <option value="zh" ${mother_language === 'zh' ? 'selected' : ''}>中文</option>
+                            <option value="ja" ${mother_language === 'ja' ? 'selected' : ''}>日本語</option>
+                            <option value="en" ${mother_language === 'en' ? 'selected' : ''}>English</option>
+                        </select>
+                    </div>
+                    <button class="submit-btn">保存设置</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+        modal.classList.add('active');
+
+        // 关闭按钮事件
+        const closeBtn = modal.querySelector('.close-btn');
+        closeBtn.addEventListener('click', () => {
+            modal.classList.remove('active');
+            setTimeout(() => modal.remove(), 300);
+        });
+
+        // 点击外部关闭
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.remove('active');
+                setTimeout(() => modal.remove(), 300);
+            }
+        });
+
+        // 保存设置
+        const submitBtn = modal.querySelector('.submit-btn');
+        submitBtn.addEventListener('click', () => {
+            const selectedLanguage = modal.querySelector('#mother-language').value;
+            mother_language = selectedLanguage;
+            localStorage.setItem('mother_language', selectedLanguage);
+            
+            // 显示保存成功提示
+            showGlobalToast(getToastMessage(selectedLanguage));
+            
+            // 关闭对话框
+            modal.classList.remove('active');
+            setTimeout(() => modal.remove(), 300);
+        });
+    }
+
+    // 根据选择的语言返回对应的提示信息
+    function getToastMessage(language) {
+        const messages = {
+            'zh': '设置已保存',
+            'ja': '設定が保存されました',
+            'en': 'Settings saved'
+        };
+        return messages[language] || messages['en'];
+    }
+
+    // 全局提示函数
+    function showGlobalToast(message) {
+        const existingToast = document.querySelector('.global-toast');
+        if (existingToast) {
+            existingToast.remove();
+        }
+
+        const toast = document.createElement('div');
+        toast.className = 'global-toast';
+        toast.textContent = message;
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            toast.classList.add('fade-out');
+            setTimeout(() => toast.remove(), 300);
+        }, 2000);
+    }
+
     // 确保初始状态
     sidebar.classList.remove('active');
     mainContent.classList.remove('sidebar-active');
@@ -302,8 +416,8 @@ document.addEventListener('DOMContentLoaded', function() {
     class TileGrid {
         constructor(container) {
             this.container = container;
-            this.gridSize = 120;
-            this.gap = 10;
+            this.gridSize = Global_grid_config.tile_size;
+            this.gap = Global_grid_config.gap_size;
             this.gridMap = new Map();
             this.overlappingTile = null;
             this.overlappingTimer = null;
@@ -1063,8 +1177,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const current_contact = this.current_contact;
             const current_scenario = this.current_scenario;
             // 设置最小尺寸
-            tile.style.minWidth = '480px';
-            tile.style.minHeight = '480px';
+            tile.style.minWidth = `${4*Global_grid_config.tile_size}px`;
+            tile.style.minHeight = `${4*Global_grid_config.tile_size}px`;
             
             // 更新内容，确保内容在 container-content 内
             const contentContainer = tile.querySelector('.container-content');
@@ -1405,8 +1519,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // 重写 setSize 方法以确保最小尺寸
         setSize(width, height) {
-            const minWidth = 480;  // 4 * 120px
-            const minHeight = 480; // 4 * 120px
+            const minWidth = 4*Global_grid_config.tile_size;  // 4 * 120px
+            const minHeight = 4*Global_grid_config.tile_size; // 4 * 120px
             
             const finalWidth = Math.max(width, minWidth);
             const finalHeight = Math.max(height, minHeight);
@@ -1425,7 +1539,7 @@ document.addEventListener('DOMContentLoaded', function() {
         validateSize() {
             const width = parseInt(this.element.style.width);
             const height = parseInt(this.element.style.height);
-            if (width < 480 || height < 480) {
+            if (width < 4*Global_grid_config.tile_size || height < 4*Global_grid_config.tile_size) {
                 this.setSize(width, height); // 这将强制应用最小尺寸
                 return false;
             }
@@ -1437,49 +1551,24 @@ document.addEventListener('DOMContentLoaded', function() {
     class TileManager {
         constructor() {
             this.config = null;
-            this.gridConfig = {
-                tile_size: 120,
-                gap_size: 10
-            };
+            this.gridConfig = Global_grid_config;
             this.loadConfig();
         }
 
         async loadConfig() {
             try {
-                const response = await fetch('/api/config');
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                this.config = await response.json();
+                // 使用 Load_config() 函数加载配置
+                this.config = await Load_config();
                 
                 // 确保配置中包含必要的结构
                 if (!this.config.Learn_config) {
-                    this.config.Learn_config = {};
-                }
-                if (!this.config.Learn_config.zh) {
-                    this.config.Learn_config.zh = {};
+                    console.error('配置中没有 Learn_config 结构');
+                    return;
                 }
                 
                 await this.generateTiles();
             } catch (error) {
                 console.error('加载配置失败:', error);
-                // 使用默认配置
-                this.config = {
-                    Learn_config: {
-                        zh: {
-                            function_tiles: {},
-                            contact: {},
-                            scene: {},
-                            chat_tile: {
-                                tile: {
-                                    position: 'translate3d(0px, 0px, 0)',
-                                    size: '4x4'
-                                }
-                            }
-                        }
-                    }
-                };
-                await this.generateTiles();
             }
         }
 
@@ -1501,70 +1590,76 @@ document.addEventListener('DOMContentLoaded', function() {
             container.style.gridAutoRows = `${this.gridConfig.tile_size}px`;
             container.style.gap = `${this.gridConfig.gap_size}px`;
 
+            // 获取当前语言的配置
+            const currentLangConfig = this.config.Learn_config[mother_language];
+            console.log(currentLangConfig)
+            if (!currentLangConfig) {
+                console.error(`找不到语言 ${mother_language} 的配置`);
+                return;
+            }
+
             // 创建所有磁贴
             const allTiles = [
                 // 功能磁贴
-                ...Object.entries(this.config.Learn_config.zh.function_tiles || {})
-                    .map(([name, data]) => {
-                        const tile = new FunctionTile(name);
-                        if (data.tile) {
-                            // 应用保存的布局
-                            const tileSize = this.calculateTileSize(data.tile.size);
+                ...(this.config.Learn_config.function_tiles || [])
+                    .map(funcData => {
+                        const tile = new FunctionTile(funcData.name);
+                        if (funcData.tile) {
+                            const tileSize = this.calculateTileSize(funcData.tile.size);
                             Object.assign(tile.element.style, {
-                                transform: data.tile.position,
+                                transform: calculatePosition(funcData.tile.position),
                                 width: `${tileSize.width}px`,
                                 height: `${tileSize.height}px`
                             });
-                            tile.element.dataset.size = data.tile.size;
+                            tile.element.dataset.size = funcData.tile.size;
                         }
                         return tile;
                     }),
 
                 // 联系人磁贴
-                ...Object.entries(this.config.Learn_config.zh.contact || {})
-                    .map(([name, data]) => {
-                        const tile = new ContactTile(name, data);
-                        if (data.tile) {
-                            const tileSize = this.calculateTileSize(data.tile.size);
+                ...(currentLangConfig.contacts || [])
+                    .map(contactData => {
+                        const tile = new ContactTile(contactData.name, contactData);
+                        if (contactData.tile) {
+                            const tileSize = this.calculateTileSize(contactData.tile.size);
                             Object.assign(tile.element.style, {
-                                transform: data.tile.position,
+                                transform: calculatePosition(contactData.tile.position),
                                 width: `${tileSize.width}px`,
                                 height: `${tileSize.height}px`
                             });
-                            tile.element.dataset.size = data.tile.size;
+                            tile.element.dataset.size = contactData.tile.size;
                         }
                         return tile;
                     }),
 
                 // 场景磁贴
-                ...Object.entries(this.config.Learn_config.zh.scene || {})
-                    .map(([name, data]) => {
-                        const tile = new ScenarioTile(name, data);
-                        if (data.tile) {
-                            const tileSize = this.calculateTileSize(data.tile.size);
+                ...(currentLangConfig.scenes || [])
+                    .map(sceneData => {
+                        const tile = new ScenarioTile(sceneData.name, sceneData);
+                        if (sceneData.tile) {
+                            const tileSize = this.calculateTileSize(sceneData.tile.size);
                             Object.assign(tile.element.style, {
-                                transform: data.tile.position,
+                                transform: calculatePosition(sceneData.tile.position),
                                 width: `${tileSize.width}px`,
                                 height: `${tileSize.height}px`
                             });
-                            tile.element.dataset.size = data.tile.size;
+                            tile.element.dataset.size = sceneData.tile.size;
                         }
                         return tile;
                     }),
 
                 // 聊天磁贴
                 (() => {
-                    const chatTileConfig = this.config.Learn_config.zh.chat_tile;
+                    const chatTileConfig = this.config.Learn_config.chat_tile;
                     const chatTile = new ChatTile('chat_tile', {
                         title: '聊天',
                         size: '4x4'
                     });
                     
-                    // 应用保存的布局
                     if (chatTileConfig && chatTileConfig.tile) {
                         const tileSize = this.calculateTileSize(chatTileConfig.tile.size);
                         Object.assign(chatTile.element.style, {
-                            transform: chatTileConfig.tile.position,
+                            transform: calculatePosition(chatTileConfig.tile.position),
                             width: `${tileSize.width}px`,
                             height: `${tileSize.height}px`
                         });
@@ -1727,8 +1822,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         // 如果是聊天磁贴，强制执行最小尺寸限制
                         const tileInstance = tileInstances.get(tile);
                         if (tileInstance instanceof ChatTile) {
-                            newWidth = Math.max(newWidth, 480);  // 4 * 120px
-                            newHeight = Math.max(newHeight, 480); // 4 * 120px
+                            newWidth = Math.max(newWidth, 4*Global_grid_config.tile_size);  // 4 * 120px
+                            newHeight = Math.max(newHeight, 4*Global_grid_config.tile_size); // 4 * 120px
                         }
 
                         const currentTransform = window.getComputedStyle(tile).transform;
@@ -1771,55 +1866,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 添加文件夹相关的CSS样式
-    const style = document.createElement('style');
-    style.textContent = `
-        .tile {
-            transition: transform 0.2s ease;
-        }
-        
-        .tile.dragging {
-            opacity: 0.8;
-            z-index: 1000;
-        }
-
-        .tile-preview {
-            position: absolute;
-            border: 2px dashed var(--text-color);
-            background: rgba(128, 128, 128, 0.1);
-            pointer-events: none;
-            z-index: 999;
-        }
-
-        [data-theme="dark"] .tile-preview {
-            border-color: rgba(255, 255, 255, 0.5);
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        [data-theme="light"] .tile-preview {
-            border-color: rgba(0, 0, 0, 0.5);
-            background: rgba(0, 0, 0, 0.1);
-        }
-
-        .tile-overlapping {
-            transform: scale(1.05);
-            box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.5);
-            border: 2px solid var(--primary-color);
-        }
-
-        .tile-overlap-complete {
-            animation: overlap-flash 0.5s ease;
-        }
-
-        @keyframes overlap-flash {
-            0% { transform: scale(1.05); }
-            50% { transform: scale(1.1); }
-            100% { transform: scale(1.05); }
-        }
-
-    `;
-    document.head.appendChild(style);
-
     // 添加保存所有磁贴状态的函数
     async function saveAllTileStates() {
         const saveBtn = document.querySelector('.save-btn');
@@ -1835,11 +1881,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         tileInstance.validateSize();
                     }
 
+                    // 获取当前位置和大小
+                    const transform = tile.style.transform;
+                    const size = tile.dataset.size;
+
+                    // 构建状态对象
                     const state = {
-                        position: tile.style.transform,
-                        size: tile.dataset.size,
-                        width: tile.style.width,
-                        height: tile.style.height
+                        position: transform || 'translate3d(0px, 0px, 0px)',
+                        size: size || '1x1'
                     };
 
                     // 根据磁贴类型构建不同的请求体
@@ -1848,26 +1897,34 @@ document.addEventListener('DOMContentLoaded', function() {
                         requestBody = {
                             id: 'chat_tile',
                             type: 'chat_tile',
-                            state: state
-                        };
-                    } else if (tileInstance instanceof ContactTile) {
-                        requestBody = {
-                            id: `contact_${tileInstance.name}`,
-                            state: state
-                        };
-                    } else if (tileInstance instanceof ScenarioTile) {
-                        requestBody = {
-                            id: `scenario_${tileInstance.scenario.scene_name}`,
-                            state: state
+                            state: state,
+                            mother_language: mother_language
                         };
                     } else if (tileInstance instanceof FunctionTile) {
                         requestBody = {
                             id: `function_${tileInstance.id}`,
-                            state: state
+                            state: state,
+                            mother_language: mother_language
+                        };
+                    } else if (tileInstance instanceof ContactTile) {
+                        requestBody = {
+                            id: `contact_${tileInstance.name}`,
+                            state: state,
+                            mother_language: mother_language
+                        };
+                    } else if (tileInstance instanceof ScenarioTile) {
+                        requestBody = {
+                            id: `scenario_${tileInstance.scenario.name}`,
+                            state: state,
+                            mother_language: mother_language
                         };
                     }
 
                     if (requestBody) {
+                        console.log(`Saving tile state for ${requestBody.id}:`, {
+                            transform: transform,
+                            parsed: state.position
+                        });
                         return fetch('/api/tile/update', {
                             method: 'POST',
                             headers: {
@@ -1888,6 +1945,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 setTimeout(() => {
                     saveBtn.innerHTML = '<i class="fas fa-save"></i>';
                 }, 2000);
+                showGlobalToast(getToastMessage(mother_language));
             } else {
                 throw new Error('部分磁贴保存失败');
             }
@@ -2165,7 +2223,45 @@ document.addEventListener('DOMContentLoaded', function() {
             this.showGlobalToast('翻译功能开发中');
         }
     }
+    class STT_uniform_engine {//输入为mother_language和模型，输出为文本迭代器(流式输出)
+        //必须要有加载模型过程
+        constructor(mother_language, model){
+            this.mother_language = mother_language;
+            this.model = model;
+        }
+    }
 
+    class TTS_uniform_engine {//target_language和驱动模块(realtimeTTS或者GPT_SoVits)，输出为音频播放。
+        //必须要有加载模型过程
+        constructor(target_language, driver_module){
+            this.target_language = target_language;
+            this.driver_module = driver_module;
+        }
+    }
+    async function Load_config() {
+        try {
+            // 使用 fetch 直接读取本地 JSON 文件
+            const response = await fetch('./config.json');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const config = await response.json();
+            return config;
+        } catch (error) {
+            console.error('加载配置失败:', error);
+            // 返回一个默认配置
+            return {
+                Learn_config: {
+                    zh: {
+                        function_tiles: {},
+                        contact: {},
+                        scene: {},
+                        chat_tile: {}
+                    }
+                }
+            };
+        }
+    }
     function setupListeningMode() {
         const listeningModeBtn = document.querySelector('.listening-mode-btn');
         if (!listeningModeBtn) return;

@@ -6,4 +6,3 @@ RealtimeSTT
 numpy
 requests
 ollama
-kokoro is for KokoroEngine

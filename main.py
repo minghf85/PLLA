@@ -6,7 +6,7 @@ import os
 
 app = Flask(__name__)
 config = Config()
-agent = PLLAgent(Platform())
+agent = PLLAgent(platform=Platform())
 
 # 获取当前文件夹路径
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -34,25 +34,8 @@ def update_tile():
         data = request.json
         tile_id = data.get('id')
         state = data.get('state')
-        success = config.update_tile_state(tile_id, state)
-        return jsonify({'success': success})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/add_contact', methods=['POST'])
-def add_contact():
-    try:
-        data = request.json
-        success = config.add_contact('zh', data)  # 暂时硬编码语言为zh
-        return jsonify({'success': success})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/add_scene', methods=['POST'])
-def add_scene():
-    try:
-        data = request.json
-        success = config.add_scene('zh', data)
+        mother_language = data.get('mother_language')
+        success = config.update_tile_state(mother_language, tile_id, state)
         return jsonify({'success': success})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -66,7 +49,6 @@ def chat():
         
         def generate():
             prompt = "你是一个智能AI助手，请用中文回答用户的问题。"
-            
             # 确保消息历史格式正确
             if isinstance(message, str):
                 current_message = [{"role": "user", "content": message}]
@@ -89,6 +71,26 @@ def chat():
     except Exception as e:
         print(f"Error in chat endpoint: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
+# # TTS
+# @app.route('/api/tts', methods=['POST'])
+# def tts():
+#     try:
+#         data = request.json
+#         text = data.get('text', '')
+#         success = config.tts(text)
+#         return jsonify({'success': success})
+#     except Exception as e:
+#         return jsonify({'success': False, 'error': str(e)}), 500
+# #STT
+# @app.route('/api/stt', methods=['POST'])
+# def stt():
+#     try:
+#         data = request.json
+#         text = data.get('text', '')
+#         success = config.stt(text)
+#         return jsonify({'success': success})
+#     except Exception as e:
+#         return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
