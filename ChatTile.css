@@ -90,10 +90,64 @@
     padding: 12px;
     cursor: pointer;
     border-bottom: 1px solid var(--border-color);
+    transition: background-color 0.2s;
 }
 
 .history-item:hover {
     background: var(--hover-bg);
+}
+
+.history-item-left {
+    flex: 1;
+    min-width: 0; /* 防止文本溢出 */
+}
+
+.history-item-title {
+    font-size: 0.95em;
+    color: var(--text-color);
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.history-item-date {
+    font-size: 0.8em;
+    color: var(--secondary-text-color);
+}
+
+.history-item-actions {
+    display: flex;
+    gap: 8px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.history-item:hover .history-item-actions {
+    opacity: 1;
+}
+
+.history-item-actions button {
+    background: none;
+    border: none;
+    color: var(--secondary-text-color);
+    padding: 4px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.history-item-actions button:hover {
+    background: var(--hover-bg);
+    color: var(--primary-color);
+}
+
+.history-item-actions .rename-btn:hover {
+    color: var(--primary-color);
+}
+
+.history-item-actions .delete-btn:hover {
+    color: #f44336; /* 删除按钮hover时显示红色 */
 }
 
 /* 聊天主体区域 */
@@ -543,4 +597,193 @@
 
 .settings-content {
     padding: 20px 0;
+}
+
+/* 历史消息相关样式 */
+.history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color 0.2s;
+}
+
+.history-item:hover {
+    background: var(--hover-bg);
+}
+
+.history-item-left {
+    flex: 1;
+    min-width: 0; /* 防止文本溢出 */
+}
+
+.history-item-title {
+    font-size: 0.95em;
+    color: var(--text-color);
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.history-item-date {
+    font-size: 0.8em;
+    color: var(--secondary-text-color);
+}
+
+.history-item-actions {
+    display: flex;
+    gap: 8px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.history-item:hover .history-item-actions {
+    opacity: 1;
+}
+
+.history-item-actions button {
+    background: none;
+    border: none;
+    color: var(--secondary-text-color);
+    padding: 4px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.history-item-actions button:hover {
+    background: var(--hover-bg);
+    color: var(--primary-color);
+}
+
+.history-item-actions .rename-btn:hover {
+    color: var(--primary-color);
+}
+
+.history-item-actions .delete-btn:hover {
+    color: #f44336; /* 删除按钮hover时显示红色 */
+}
+
+/* 历史消息下拉菜单样式优化 */
+.history-dropdown {
+    position: relative;
+}
+
+.history-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px;
+    border: none;
+    background: none;
+    color: var(--secondary-text-color);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.history-btn.active,
+.history-btn:hover {
+    background: var(--hover-bg);
+    color: var(--primary-color);
+}
+
+.history-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    width: 320px;
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    display: none;
+    z-index: 1000;
+    overflow: hidden;
+}
+
+.history-menu.active {
+    display: block;
+    animation: menu-fade-in 0.2s ease;
+}
+
+.history-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--background-color);
+}
+
+.history-title {
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 12px;
+}
+
+.history-search {
+    position: relative;
+}
+
+.history-search input {
+    width: 100%;
+    padding: 8px 12px;
+    padding-left: 32px; /* 为搜索图标留出空间 */
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--surface-color);
+    color: var(--text-color);
+    transition: all 0.2s;
+}
+
+.history-search::before {
+    content: '\f002'; /* FontAwesome搜索图标 */
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--secondary-text-color);
+    font-size: 0.9em;
+}
+
+.history-search input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
+}
+
+.history-list {
+    max-height: 400px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--secondary-text-color) transparent;
+}
+
+/* 自定义滚动条样式 */
+.history-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.history-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.history-list::-webkit-scrollbar-thumb {
+    background-color: var(--secondary-text-color);
+    border-radius: 3px;
+}
+
+/* 添加动画效果 */
+@keyframes menu-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }

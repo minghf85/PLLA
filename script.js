@@ -511,9 +511,9 @@ document.addEventListener('DOMContentLoaded', async function() {
                                 const draggedType = draggedTile.dataset.tileId.split('_')[0];
                                 if (ChatTile.instance) {
                                     if (draggedType === 'contact') {
-                                        ChatTile.instance.updateCurrentContact(draggedTile.dataset.tileId);
+                                        ChatTile.instance.updateCurrentContact(draggedTile.dataset.tileId.split('_')[1]);
                                     } else if (draggedType === 'scenario') {
-                                        ChatTile.instance.updateCurrentScenario(draggedTile.dataset.tileId);
+                                        ChatTile.instance.updateCurrentScenario(draggedTile.dataset.tileId.split('_')[1]);
                                     }
                                 }
                                 this.handleOverlapTimeout(draggedTile, overlappingTile);
@@ -819,11 +819,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                 const OVERLAP_THRESHOLD = 0.8;
 
                 if (overlapRatio > OVERLAP_THRESHOLD) {
-                    console.log('预览框重叠比例:', {
-                        tileId: tile.dataset.tileId,
-                        ratio: overlapRatio.toFixed(2),
-                        area: overlapArea
-                    });
                     return tile;
                 }
             }
@@ -852,6 +847,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             this.id = id;
             this.size = options.size || '1x1';
             this.title = options.title || '';
+            this.name = options.name || '';
             this.description = options.description || '';
             this.icon = options.icon || 'fa-square';
             this.color = options.color || '#4a90e2';
@@ -1134,6 +1130,22 @@ document.addEventListener('DOMContentLoaded', async function() {
                 showRecycleBinDialog();
             }
         },
+        "load-unload-STT": {
+            title: '加载卸载STT',
+            icon: 'fas fa-microphone',
+            color: '#9b59b6',
+            action: () => {
+                console.log('加载卸载STT');
+            }
+        },
+        "load-unload-TTS": {
+            title: '加载卸载TTS',
+            icon: 'fas fa-volume-up',
+            color: '#3498db',
+            action: () => {
+                console.log('加载卸载TTS');
+            }
+        },
         save: {
             title: '保存布局',
             icon: 'fas fa-save',
@@ -1254,6 +1266,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             this.chatHistory = [];
             this.current_contact = 'default';
             this.current_scenario = 'default';
+            this.current_prompt = "default";
             ChatTile.instance = this;
         }
 
@@ -1263,6 +1276,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             if (contactNameElement) {
                 contactNameElement.textContent = contact;
             }
+            this.updateCurrentPrompt(); // 更新提示词
         }
 
         updateCurrentScenario(scenario) {
@@ -1271,6 +1285,60 @@ document.addEventListener('DOMContentLoaded', async function() {
             if (scenarioNameElement) {
                 scenarioNameElement.textContent = scenario;
             }
+            this.updateCurrentPrompt(); // 更新提示词
+        }
+
+        updateCurrentPrompt() {
+            const currentLangConfig = tileManager.config.Learn_config[mother_language];
+            let contactInfo = null;
+            let scenarioInfo = null;
+
+            if (currentLangConfig) {
+                if (this.current_contact && currentLangConfig.contacts) {
+                    contactInfo = currentLangConfig.contacts.find(
+                        contact => contact.name === this.current_contact
+                    );
+                }
+                if (this.current_scenario && currentLangConfig.scenes) {
+                    scenarioInfo = currentLangConfig.scenes.find(
+                        scene => scene.name === this.current_scenario
+                    );
+                }
+            }
+
+            let prompt = '';
+            const targetLang = contactInfo ? contactInfo.target_language : null;
+
+            if (mother_language === 'zh') {
+                if (contactInfo) {
+                    prompt = `你是${contactInfo.name}。请只用${targetLang}语回复，不要解释。你的人设是：${contactInfo.prompt || ''}`;
+                    if (scenarioInfo) {
+                        prompt += `\n场景：${scenarioInfo.name}。${scenarioInfo.prompt}`;
+                    }
+                }
+            } 
+            else if (mother_language === 'en') {
+                if (contactInfo) {
+                    prompt = `You are ${contactInfo.name}. Please respond only in ${targetLang}, without explanations. Your persona is: ${contactInfo.prompt || ''}`;
+                    if (scenarioInfo) {
+                        prompt += `\nScene: ${scenarioInfo.name}. ${scenarioInfo.prompt}`;
+                    }
+                }
+            } 
+            else if (mother_language === 'ja') {
+                if (contactInfo) {
+                    prompt = `あなたは${contactInfo.name}です。${targetLang}だけで返信してください。説明は不要です。あなたの人設は：${contactInfo.prompt || ''}`;
+                    if (scenarioInfo) {
+                        prompt += `\nシーン：${scenarioInfo.name}。${scenarioInfo.prompt}`;
+                    }
+                }
+            }
+
+            this.current_prompt = prompt;
+            this.target_language = targetLang;
+            
+            console.log("当前提示词:", this.current_prompt);
+            console.log("目标语言:", this.target_language);
         }
 
         createElement() {
@@ -1308,12 +1376,12 @@ document.addEventListener('DOMContentLoaded', async function() {
                                 <div class="current-info">
                                     <span class="current-contact">
                                         <i class="fas fa-user"></i>
-                                        <span class="contact-name">${this.current_contact}</span>
+                                        <span class="contact-name">${this.current_contact || "default"}</span>
                                     </span>
                                     <span class="divider">·</span>
                                     <span class="current-scenario">
                                         <i class="fas fa-book"></i>
-                                        <span class="scenario-name">${this.current_scenario}</span>
+                                        <span class="scenario-name">${this.current_scenario || "default"}</span>
                                     </span>
                                 </div>
                             </div>

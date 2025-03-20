@@ -5,13 +5,8 @@ class PLLAgent:#PLLAgent是基于LLM的Agent，personal language learning agent�
         self.Input_config = Input_config
         self.platform = platform
         self.client = OpenAI(api_key=self.platform.api_key, base_url=self.platform.url)
-        self.messages = self.gen_messages(self.Input_config)
-
-    def gen_messages(self, Input_config):
-        #生成合适的prompt
-        return f"你是一个智能AI助手，请用中文回答用户的问题。"
     
-    def gen_normal_response(self, prompt, historys=[]):#根据prompt和history生成回复
+    def gen_normal_response(self, prompt, historys=[]):#根据prompt和history生成一般标准回复，也用于生成翻译语音生成
         try:
             # 构建消息列表
             if isinstance(historys, str):
@@ -81,6 +76,7 @@ class PLLAgent:#PLLAgent是基于LLM的Agent，personal language learning agent�
         #   嗯，是可以书写文本的
         # </details>
         pass
+
 
     
     

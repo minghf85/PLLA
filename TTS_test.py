@@ -22,31 +22,31 @@ import string
 from RealtimeTTS import TextToAudioStream, KokoroEngine
 
 languages = {
-    "a": ("af_heart", "Hello, this is an American voice test."),
-    "b": ("bf_emma", "Good day, mate! This is a British voice test."),
+    # "a": ("af_heart", "Hello, this is an American voice test."),
+    # "b": ("bf_emma", "Good day, mate! This is a British voice test."),
     "j": ("jf_alpha", "これは日本語のテストです。"),
     "z": ("zf_xiaoxiao", "你好，这是一段中文测试。"),
-    "e": ("ef_dora", "¡Hola! Esta es una prueba de voz en español."),
-    "f": ("ff_siwis", "Bonjour, ceci est un test de voix en français."),
-    "h": ("hf_alpha", "नमस्ते, यह हिंदी में एक वॉयस टेस्ट है।"),
-    "i": ("if_sara", "Ciao, questo è un test vocale in italiano."),
-    "p": ("pf_dora", "Olá, este é um teste de voz em português brasileiro.")
+    # "e": ("ef_dora", "¡Hola! Esta es una prueba de voz en español."),
+    # "f": ("ff_siwis", "Bonjour, ceci est un test de voix en français."),
+    # "h": ("hf_alpha", "नमस्ते, यह हिंदी में एक वॉयस टेस्ट है।"),
+    # "i": ("if_sara", "Ciao, questo è un test vocale in italiano."),
+    # "p": ("pf_dora", "Olá, este é um teste de voz em português brasileiro.")
 }
 
 prewarm_texts = {
-    "a": ("af_heart", "Warm up"),
-    "b": ("bf_emma", "Warm up"),
+    # "a": ("af_heart", "Warm up"),
+    # "b": ("bf_emma", "Warm up"),
     "j": ("jf_alpha", "準備中"),
     "z": ("zf_xiaoxiao", "预热"),
-    "e": ("ef_dora", "Preparando"),
-    "f": ("ff_siwis", "Préchauffage"),
-    "h": ("hf_alpha", "तैयारी"),
-    "i": ("if_sara", "Riscaldamento"),
-    "p": ("pf_dora", "Aquecendo")
+    # "e": ("ef_dora", "Preparando"),
+    # "f": ("ff_siwis", "Préchauffage"),
+    # "h": ("hf_alpha", "तैयारी"),
+    # "i": ("if_sara", "Riscaldamento"),
+    # "p": ("pf_dora", "Aquecendo")
 }
 
 #engine = KokoroEngine(default_voice=languages["a"][0], debug=True)
-engine = KokoroEngine(default_voice=languages["a"][0])
+engine = KokoroEngine(default_voice=languages["j"][0])
 
 for i in range(10):
     print(f"Prewarming {languages['j'][0]}")

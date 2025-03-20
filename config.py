@@ -30,11 +30,14 @@ class Config:
                 self.config['Learn_config']['chat_tile'] = tile_instance
                 
             elif tile_type == 'function':
-                # 更新功能磁贴配置
-                for func_tile in self.config['Learn_config']['function_tiles']:
-                    if func_tile['name'] == tile_instance['name']:
-                        func_tile.update(tile_instance)
-                        break
+                # 直接全量更新功能磁贴配置
+                functions = []
+                for func_tile in tile_instance:
+                    functions.append({
+                        'name': func_tile['name'],
+                        'tile': func_tile['tile']
+                    })
+                self.config['Learn_config']['function_tiles'] = functions
                     
             else:
                 # 确保语言配置存在
@@ -45,7 +48,7 @@ class Config:
                     }
                 
                 if tile_type == 'contact':
-                    # 直接更新联系人列表
+                    # 直接全量更新联系人列表
                     contacts = []
                     for tile in tile_instance:
                         contacts.append({
@@ -60,7 +63,7 @@ class Config:
                     self.config['Learn_config'][mother_language]['contacts'] = contacts
                     
                 elif tile_type == 'scenario':
-                    # 直接更新场景列表
+                    # 直接全量更新场景列表
                     scenes = []
                     for tile in tile_instance:
                         scenes.append({
