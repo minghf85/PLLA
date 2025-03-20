@@ -27,12 +27,18 @@ function calculatePosition(position) {
     return `translate3d(${position[0] * gridSize}px, ${position[1] * gridSize}px, ${position[2]}px)`;
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    // 从 localStorage 获取母语设置，默认为 "zh"
+document.addEventListener('DOMContentLoaded', async function() {
+    // 首先加载配置
+    Global_config = await Load_config();
+    
+    // 然后初始化其他全局变量
     Global_isListeningMode = false;
     mother_language = localStorage.getItem('mother_language') || "zh";
-    Global_config = Load_config();
+    support_languages = Global_config.support_languages || ["zh", "en", "ja"];
     Global_grid_config = Global_config.grid_config || {tile_size: 120, gap_size: 10};
+    console.log(Global_grid_config);
+    console.log('Supported languages:', support_languages);
+
     const menuToggle = document.getElementById('menu-toggle');
     const sidebar = document.getElementById('sidebar');
     const mainContent = document.querySelector('.main-content');
@@ -57,6 +63,23 @@ document.addEventListener('DOMContentLoaded', function() {
             existingModal.remove();
         }
 
+        // 生成语言选项HTML
+        const languageOptions = support_languages.map(lang => {
+            const langNames = {
+                'zh': '中文',
+                'ja': '日本語',
+                'en': 'English',
+                'fr': 'Français',
+                'de': 'Deutsch',
+                'es': 'Español',
+                'it': 'Italiano',
+                'pt': 'Português',
+                'ru': 'Русский',
+                'ar': 'العربية'
+            };
+            return `<option value="${lang}" ${mother_language === lang ? 'selected' : ''}>${langNames[lang] || lang}</option>`;
+        }).join('');
+
         const modal = document.createElement('div');
         modal.className = 'settings-modal modal';
         modal.innerHTML = `
@@ -69,9 +92,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="form-group">
                         <label for="mother-language">选择母语:</label>
                         <select id="mother-language" class="language-select">
-                            <option value="zh" ${mother_language === 'zh' ? 'selected' : ''}>中文</option>
-                            <option value="ja" ${mother_language === 'ja' ? 'selected' : ''}>日本語</option>
-                            <option value="en" ${mother_language === 'en' ? 'selected' : ''}>English</option>
+                            ${languageOptions}
                         </select>
                     </div>
                     <button class="submit-btn">保存设置</button>
@@ -106,6 +127,9 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // 显示保存成功提示
             showGlobalToast(getToastMessage(selectedLanguage));
+            
+            // 重新加载磁贴
+            tileManager.loadConfig();
             
             // 关闭对话框
             modal.classList.remove('active');
@@ -469,43 +493,80 @@ document.addEventListener('DOMContentLoaded', function() {
                     // 移除之前的重叠效果
                     if (this.overlappingTile) {
                         this.overlappingTile.classList.remove('tile-overlapping');
+                        this.overlappingTile.classList.remove('drag-target');
                     }
 
                     this.overlappingTile = overlappingTile;
 
                     // 设置新的重叠效果
-                    if (overlappingTile && overlappingTile.dataset.tileId === 'chat') {
-                        overlappingTile.classList.add('tile-overlapping');
+                    if (overlappingTile) {
+                        const draggedInstance = tileInstances.get(draggedTile);
+                        const overlappingInstance = tileInstances.get(overlappingTile);
                         
-                        // 设置新的计时器
-                        this.overlappingTimer = setTimeout(() => {
-                            const draggedType = draggedTile.dataset.tileId.split('_')[0];
-                            if (ChatTile.instance) {
-                                if (draggedType === 'contact') {
-                                    ChatTile.instance.updateCurrentContact(draggedTile.dataset.tileId);
-                                } else if (draggedType === 'scenario') {
-                                    ChatTile.instance.updateCurrentScenario(draggedTile.dataset.tileId);
+                        if (overlappingTile.dataset.tileId === 'chat') {
+                            overlappingTile.classList.add('tile-overlapping');
+                            
+                            // 设置新的计时器
+                            this.overlappingTimer = setTimeout(() => {
+                                const draggedType = draggedTile.dataset.tileId.split('_')[0];
+                                if (ChatTile.instance) {
+                                    if (draggedType === 'contact') {
+                                        ChatTile.instance.updateCurrentContact(draggedTile.dataset.tileId);
+                                    } else if (draggedType === 'scenario') {
+                                        ChatTile.instance.updateCurrentScenario(draggedTile.dataset.tileId);
+                                    }
                                 }
-                            }
-                            this.handleOverlapTimeout(draggedTile, overlappingTile);
-                        }, 1200);
+                                this.handleOverlapTimeout(draggedTile, overlappingTile);
+                            }, 1200);
+                        } 
+                        // 处理编辑联系人
+                        else if (overlappingTile.dataset.tileId === 'edit-contact' && draggedInstance instanceof ContactTile) {
+                            overlappingTile.classList.add('drag-target');
+                            
+                            this.overlappingTimer = setTimeout(() => {
+                                showEditContactDialog(draggedInstance.contact);
+                                this.handleOverlapTimeout(draggedTile, overlappingTile);
+                            }, 800);
+                        }
+                        // 处理编辑场景
+                        else if (overlappingTile.dataset.tileId === 'edit-scenario' && draggedInstance instanceof ScenarioTile) {
+                            overlappingTile.classList.add('drag-target');
+                            
+                            this.overlappingTimer = setTimeout(() => {
+                                showEditScenarioDialog(draggedInstance.scenario);
+                                this.handleOverlapTimeout(draggedTile, overlappingTile);
+                            }, 800);
+                        }
+                        // 处理删除磁贴
+                        else if (overlappingTile.dataset.tileId === 'recycle-bin' && 
+                                (draggedInstance instanceof ContactTile || draggedInstance instanceof ScenarioTile)) {
+                            overlappingTile.classList.add('drag-target');
+                            
+                            this.overlappingTimer = setTimeout(() => {
+                                showRecycleBinDialog(draggedInstance);
+                                this.handleOverlapTimeout(draggedTile, overlappingTile);
+                            }, 800);
+                        }
                     }
                 }
             }
         }
 
-        handleOverlapTimeout(draggedTile, targetTile) {
-            // 检查是否是联系人拖入场景
-            if (draggedTile.classList.contains('contact-tile') && 
-                targetTile.classList.contains('scenario-tile')) {
-                
-                const contactTileInstance = tileInstances.get(draggedTile);
-                const scenarioTileInstance = tileInstances.get(targetTile);
-                
-                if (contactTileInstance && scenarioTileInstance) {
-                    contactTileInstance.handleSceneDrop(scenarioTileInstance);
-                }
+        handleOverlapTimeout(draggedTile, overlappingTile) {
+            // 重置拖拽状态
+            draggedTile.style.opacity = '1';
+            draggedTile.classList.remove('dragging');
+            overlappingTile.classList.remove('tile-overlapping');
+            overlappingTile.classList.remove('drag-target');
+            
+            // 重置磁贴位置
+            const tileInstance = tileInstances.get(draggedTile);
+            if (tileInstance && tileInstance.lastValidPosition) {
+                draggedTile.style.transform = calculatePosition(tileInstance.lastValidPosition);
             }
+            
+            this.overlappingTile = null;
+            this.overlappingTimer = null;
         }
 
         hidePreview() {
@@ -815,7 +876,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 <div class="tile-content">
                     <div class="tile-icon">
-                        <i class="fas ${this.icon}" style="color: ${this.color}"></i>
+                        <i class="${this.icon}" style="color: ${this.color}"></i>
                     </div>
                     <div class="tile-info">
                         <h3>${this.title}</h3>
@@ -838,7 +899,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setSize(width, height) {
             this.element.style.width = `${width}px`;
             this.element.style.height = `${height}px`;
-            this.element.dataset.size = `${Math.round(width/120)}x${Math.round(height/120)}`;
+            this.element.dataset.size = `${Math.round(width/Global_grid_config.tile_size)}x${Math.round(height/Global_grid_config.tile_size)}`;
         }
 
         bindEvents() {
@@ -888,10 +949,17 @@ document.addEventListener('DOMContentLoaded', function() {
     // 联系人磁贴类
     class ContactTile extends BaseTile {
         constructor(name, data) {
+            // 确保图标包含必要的类名
+            const iconClass = data.icon.startsWith('fa-') 
+                ? `fas ${data.icon}` // 如果是 Font Awesome 图标名
+                : data.icon.includes('/') 
+                    ? `<img src="${data.icon}" alt="${name}" style="width: 50px; height: 50px;">` // 如果是图片路径
+                    : `fas fa-user`; // 默认图标
+
             super(`contact_${name}`, {
                 title: name,
                 description: data.description,
-                icon: 'fa-user',
+                icon: iconClass,
                 color: '#2ecc71',
                 size: data.size || '1x1'
             });
@@ -901,10 +969,43 @@ document.addEventListener('DOMContentLoaded', function() {
             this.bindEvents();
         }
 
+        // 重写 createElement 方法来处理图片图标
+        createElement() {
+            const tile = document.createElement('div');
+            tile.className = 'tile';
+            tile.dataset.tileId = this.id;
+            tile.dataset.size = this.size;
+            
+            // 判断是否使用图片作为图标
+            const isImageIcon = this.icon.includes('<img');
+            
+            tile.innerHTML = `
+                <div class="tile-drag-handle">
+                    <i class="fas fa-grip-vertical"></i>
+                </div>
+                <div class="tile-content">
+                    <div class="tile-icon">
+                        ${isImageIcon ? this.icon : `<i class="${this.icon}" style="color: ${this.color}"></i>`}
+                    </div>
+                    <div class="tile-info">
+                        <h3>${this.title}</h3>
+                        <p>${this.description}</p>
+                    </div>
+                </div>
+                ${this.resizable ? '<div class="tile-resize-handle"></div>' : ''}
+            `;
+
+            // 设置基础样式
+            tile.style.backgroundColor = this.getBackgroundColor();
+            
+            return tile;
+        }
+
         bindEvents() {
             // 双击事件
             this.element.addEventListener('dblclick', () => {
                 console.log('双击联系人:', this.title);
+                console.log('icon:', this.icon);
             });
         }
 
@@ -920,11 +1021,11 @@ document.addEventListener('DOMContentLoaded', function() {
             super(`scenario_${name}`, {
                 title: name,
                 description: data.description,
-                icon: 'fa-book',
+                icon: 'fas fa-book',
                 color: '#e74c3c',
                 size: data.size || '1x1'
             });
-            
+            this.name = name;
             this.scenario = data;
             this.bindEvents();
         }
@@ -945,7 +1046,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const config = {
         menu: {
             title: '菜单',
-            icon: 'fa-bars',
+            icon: 'fas fa-bars',
             color: '#3498db',
             action: () => {
                 // 只更新磁贴对应的侧边栏状态
@@ -964,7 +1065,7 @@ document.addEventListener('DOMContentLoaded', function() {
         },
         search: {
             title: '搜索',
-            icon: 'fa-search',
+            icon: 'fas fa-search',
             color: '#9b59b6',
             action: () => {
                 console.log('搜索功能待实现');
@@ -973,7 +1074,7 @@ document.addEventListener('DOMContentLoaded', function() {
         },
         theme: {
             title: '主题切换',
-            icon: savedTheme === 'dark' ? 'fa-sun' : 'fa-moon',  // 根据当前主题设置初始图标
+            icon: savedTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon',  // 根据当前主题设置初始图标
             color: '#f1c40f',
             action: () => {
                 // 添加过渡状态检查，避免快速重复切换
@@ -995,43 +1096,47 @@ document.addEventListener('DOMContentLoaded', function() {
         },
         'add-contact': {
             title: '添加联系人',
-            icon: 'fa-user-plus',
+            icon: 'fas fa-user-plus',
             color: '#2ecc71',
             action: () => {
-                console.log('添加联系人功能待实现');
-                // TODO: 实现添加联系人功能
+                showAddContactDialog();
             }
         },
         'add-scenario': {
             title: '添加场景',
-            icon: 'fa-plus-square',
+            icon: 'fas fa-plus-square',
             color: '#e74c3c',
             action: () => {
-                console.log('添加场景功能待实现');
-                // TODO: 实现添加场景功能
+                showAddScenarioDialog();
             }
         },
         'edit-contact': {
             title: '编辑联系人',
-            icon: 'fa-user-edit',
+            icon: 'fas fa-user-edit',
             color: '#e67e22',
             action: () => {
-                console.log('编辑联系人功能待实现');
-                // TODO: 实现编辑联系人功能
+                showEditContactDialog();
             }
         },
         'edit-scenario': {
             title: '编辑场景',
-            icon: 'fa-edit',
+            icon: 'fas fa-edit',
             color: '#1abc9c',
             action: () => {
-                console.log('编辑场景功能待实现');
-                // TODO: 实现编辑场景功能
+                showEditScenarioDialog();
+            }
+        },
+        "recycle-bin": {
+            title: '回收站',
+            icon: 'fas fa-trash',
+            color: '#e74c3c',
+            action: () => {
+                showRecycleBinDialog();
             }
         },
         save: {
             title: '保存布局',
-            icon: 'fa-save',
+            icon: 'fas fa-save',
             color: '#34495e',
             action: saveAllTileStates
         }
@@ -1039,36 +1144,32 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 修改 FunctionTile 类的构造函数
     class FunctionTile extends BaseTile {
-        constructor(id) {
-            const functionConfig = config[id];
+        constructor(name) {
+            const functionConfig = config[name];
             if (!functionConfig) {
-                throw new Error(`未找到功能配置: ${id}`);
+                throw new Error(`未找到功能配置: ${name}`);
             }
 
-            super(id, {
+            super(name, {
                 title: functionConfig.title,
                 icon: functionConfig.icon,
                 color: functionConfig.color,
                 description: ''
             });
-
+            this.name = name;
             this.action = functionConfig.action;
-            this.element.dataset.tileId = id; // 确保添加标识
+            this.element.dataset.tileId = name; // 确保添加标识
             this.bindEvents();
         }
 
         bindEvents() {
-            // 双击触发功能，添加防抖
-            let lastClickTime = 0;
-            this.element.addEventListener('dblclick', (e) => {
-                const currentTime = new Date().getTime();
-                if (currentTime - lastClickTime > 300) { // 防抖间隔
-                    lastClickTime = currentTime;
-                    if (this.action) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        this.action();
-                    }
+            // 使用单击事件，并确保只绑定一次
+            this.element.removeEventListener('click', this.handleClick);  // 先移除可能存在的事件监听
+            this.element.addEventListener('click', this.handleClick = (e) => {
+                if (this.action) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.action();
                 }
             });
         }
@@ -1080,7 +1181,7 @@ document.addEventListener('DOMContentLoaded', function() {
             super(id, {
                 title: options.title || 'Container',
                 description: options.description || '',
-                icon: options.icon || 'fa-window-maximize',
+                icon: options.icon || 'fas fa-window-maximize',
                 color: options.color || '#3498db',
                 size: options.size || '1x1'
             });
@@ -1174,8 +1275,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         createElement() {
             const tile = super.createElement();
-            const current_contact = this.current_contact;
-            const current_scenario = this.current_scenario;
             // 设置最小尺寸
             tile.style.minWidth = `${4*Global_grid_config.tile_size}px`;
             tile.style.minHeight = `${4*Global_grid_config.tile_size}px`;
@@ -1209,12 +1308,12 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <div class="current-info">
                                     <span class="current-contact">
                                         <i class="fas fa-user"></i>
-                                        <span class="contact-name">${current_contact}</span>
+                                        <span class="contact-name">${this.current_contact}</span>
                                     </span>
                                     <span class="divider">·</span>
                                     <span class="current-scenario">
                                         <i class="fas fa-book"></i>
-                                        <span class="scenario-name">${current_scenario}</span>
+                                        <span class="scenario-name">${this.current_scenario}</span>
                                     </span>
                                 </div>
                             </div>
@@ -1519,15 +1618,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // 重写 setSize 方法以确保最小尺寸
         setSize(width, height) {
-            const minWidth = 4*Global_grid_config.tile_size;  // 4 * 120px
-            const minHeight = 4*Global_grid_config.tile_size; // 4 * 120px
+            const minWidth = 4*Global_grid_config.tile_size;  
+            const minHeight = 4*Global_grid_config.tile_size; 
             
             const finalWidth = Math.max(width, minWidth);
             const finalHeight = Math.max(height, minHeight);
             
             // 更新 dataset.size 以反映实际大小
-            const sizeW = Math.max(4, Math.round(finalWidth / 120));
-            const sizeH = Math.max(4, Math.round(finalHeight / 120));
+            const sizeW = Math.max(4, Math.round(finalWidth / Global_grid_config.tile_size));
+            const sizeH = Math.max(4, Math.round(finalHeight / Global_grid_config.tile_size));
             this.element.dataset.size = `${sizeW}x${sizeH}`;
             
             // 设置样式
@@ -1557,8 +1656,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         async loadConfig() {
             try {
-                // 使用 Load_config() 函数加载配置
-                this.config = await Load_config();
+                this.config = Global_config;  // 直接使用已加载的全局配置
                 
                 // 确保配置中包含必要的结构
                 if (!this.config.Learn_config) {
@@ -1580,7 +1678,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 height: h * this.gridConfig.tile_size
             };
         }
-
+        
         async generateTiles() {
             const container = document.querySelector('.tiles-container');
             container.innerHTML = '';
@@ -1592,7 +1690,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // 获取当前语言的配置
             const currentLangConfig = this.config.Learn_config[mother_language];
-            console.log(currentLangConfig)
             if (!currentLangConfig) {
                 console.error(`找不到语言 ${mother_language} 的配置`);
                 return;
@@ -1680,6 +1777,230 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // 初始化磁贴系统
             initTileSystem();
+        }
+
+        get_available_position() {
+            const container = document.querySelector('.tiles-container');
+            const gridSize = this.gridConfig.tile_size;
+            const gapSize = this.gridConfig.gap_size;
+            
+            // 获取所有已占用的位置
+            const occupiedPositions = new Set();
+            const tiles = container.querySelectorAll('.tile');
+            
+            tiles.forEach(tile => {
+                const transform = tile.style.transform;
+                const position = this.parseTransform(transform);
+                if (position) {
+                    occupiedPositions.add(`${position[0]},${position[1]}`);
+                }
+            });
+
+            // 定义搜索范围（例如：8x8网格）
+            const gridRange = 8;
+            
+            // 从左上角开始搜索第一个可用位置
+            for (let y = 0; y < gridRange; y++) {
+                for (let x = 0; x < gridRange; x++) {
+                    const posKey = `${x},${y}`;
+                    if (!occupiedPositions.has(posKey)) {
+                        console.log('找到可用位置:', [x, y, 0]);
+                        return [x, y, 0];
+                    }
+                }
+            }
+
+            // 如果没有找到空位，返回默认位置
+            console.log('未找到可用位置，使用默认位置');
+            return [0, 0, 0];
+        }
+
+        parseTransform(transform) {
+            if (!transform) return null;
+            
+            // 从 transform 样式中提取位置
+            const match = transform.match(/translate3d\((\d+)px,\s*(\d+)px,\s*(\d+)px\)/);
+            if (!match) return null;
+            
+            const gridSize = this.gridConfig.tile_size;
+            return [
+                Math.round(parseInt(match[1]) / gridSize),
+                Math.round(parseInt(match[2]) / gridSize),
+                parseInt(match[3])
+            ];
+        }
+
+        async addContact(contactData) {
+            try {
+                // 确保当前语言的配置存在
+                if (!this.config.Learn_config[mother_language]) {
+                    this.config.Learn_config[mother_language] = {
+                        contacts: [],
+                        scenes: []
+                    };
+                }
+
+                // 检查联系人是否已存在
+                const existingContact = this.config.Learn_config[mother_language].contacts.find(
+                    contact => contact.name === contactData.name
+                );
+
+                if (existingContact) {
+                    showGlobalToast('联系人已存在');
+                    return;
+                }
+
+                // 获取可用位置
+                const position = this.get_available_position();
+                console.log('新联系人位置:', position);
+
+                // 创建新的联系人配置
+                const newContact = {
+                    name: contactData.name,
+                    target_language: contactData.target_language,
+                    prompt: contactData.prompt,
+                    speed: contactData.speed,
+                    voice_engine: contactData.voice_engine,
+                    icon: contactData.icon,
+                    tile: {
+                        position: position,
+                        size: "1x1"
+                    }
+                };
+
+                // 添加到配置中
+                this.config.Learn_config[mother_language].contacts.push(newContact);
+
+                // 创建新的联系人磁贴
+                const tile = new ContactTile(contactData.name, newContact);
+                const container = document.querySelector('.tiles-container');
+                
+                // 设置初始位置和大小
+                Object.assign(tile.element.style, {
+                    transform: calculatePosition(position),
+                    width: `${this.gridConfig.tile_size}px`,
+                    height: `${this.gridConfig.tile_size}px`
+                });
+                tile.element.dataset.size = "1x1";
+
+                // 添加到容器
+                container.appendChild(tile.element);
+                // Init
+                initTileSystem();
+                // 保存所有磁贴状态
+                saveAllTileStates();
+                console.log('联系人添加成功:', newContact);
+                return true;
+            } catch (error) {
+                console.error('添加联系人失败:', error);
+                showGlobalToast('添加联系人失败');
+                return false;
+            }
+        }
+
+        async addScenario(scenarioData) {
+            try {
+                // 确保当前语言的配置存在
+                if (!this.config.Learn_config[mother_language]) {
+                    this.config.Learn_config[mother_language] = {
+                        contacts: [],
+                        scenes: []
+                    };
+                }
+
+                // 检查场景是否已存在
+                const existingScenario = this.config.Learn_config[mother_language].scenes.find(
+                    scene => scene.name === scenarioData.name
+                );
+
+                if (existingScenario) {
+                    showGlobalToast('场景已存在');
+                    return;
+                }
+
+                // 获取可用位置
+                const position = this.get_available_position();
+                console.log('新场景位置:', position);
+
+                // 创建新的场景配置
+                const newScenario = {
+                    name: scenarioData.name,
+                    prompt: scenarioData.prompt,
+                    tile: {
+                        position: position,
+                        size: "1x1"
+                    }
+                };
+
+                // 添加到配置中
+                this.config.Learn_config[mother_language].scenes.push(newScenario);
+
+                // 创建新的场景磁贴
+                const tile = new ScenarioTile(scenarioData.name, newScenario);
+                const container = document.querySelector('.tiles-container');
+                
+                // 设置初始位置和大小
+                Object.assign(tile.element.style, {
+                    transform: calculatePosition(position),
+                    width: `${this.gridConfig.tile_size}px`,
+                    height: `${this.gridConfig.tile_size}px`
+                });
+                tile.element.dataset.size = "1x1";
+
+                // 添加到容器
+                container.appendChild(tile.element);
+
+                // Init
+                initTileSystem();
+                // 保存所有磁贴状态
+                saveAllTileStates();
+                console.log('场景添加成功:', newScenario);
+                return true;
+            } catch (error) {
+                console.error('添加场景失败:', error);
+                showGlobalToast('添加场景失败');
+                return false;
+            }
+        }
+
+        updateContact(oldName, updatedContact) {
+            const contacts = this.config.Learn_config[mother_language].contacts;
+            const index = contacts.findIndex(c => c.name === oldName);
+            if (index !== -1) {
+                contacts[index] = updatedContact;
+                this.loadConfig(); // 重新加载配置以更新界面
+                saveAllTileStates();
+            }
+        }
+
+        updateScenario(oldName, updatedScenario) {
+            const scenes = this.config.Learn_config[mother_language].scenes;
+            const index = scenes.findIndex(s => s.name === oldName);
+            if (index !== -1) {
+                scenes[index] = updatedScenario;
+                this.loadConfig(); // 重新加载配置以更新界面
+                saveAllTileStates();
+            }
+        }
+
+        deleteContact(name) {
+            const contacts = this.config.Learn_config[mother_language].contacts;
+            const index = contacts.findIndex(c => c.name === name);
+            if (index !== -1) {
+                contacts.splice(index, 1);
+                this.loadConfig(); // 重新加载配置以更新界面
+                saveAllTileStates();
+            }
+        }
+
+        deleteScenario(name) {
+            const scenes = this.config.Learn_config[mother_language].scenes;
+            const index = scenes.findIndex(s => s.name === name);
+            if (index !== -1) {
+                scenes.splice(index, 1);
+                this.loadConfig(); // 重新加载配置以更新界面
+                saveAllTileStates();
+            }
         }
     }
 
@@ -1822,8 +2143,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         // 如果是聊天磁贴，强制执行最小尺寸限制
                         const tileInstance = tileInstances.get(tile);
                         if (tileInstance instanceof ChatTile) {
-                            newWidth = Math.max(newWidth, 4*Global_grid_config.tile_size);  // 4 * 120px
-                            newHeight = Math.max(newHeight, 4*Global_grid_config.tile_size); // 4 * 120px
+                            newWidth = Math.max(newWidth, 4*Global_grid_config.tile_size); 
+                            newHeight = Math.max(newHeight, 4*Global_grid_config.tile_size);
                         }
 
                         const currentTransform = window.getComputedStyle(tile).transform;
@@ -1866,92 +2187,150 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 添加保存所有磁贴状态的函数
+    // 添加位置格式转换函数
+    function parseTransformToArray(transform) {
+        if (!transform) return [0, 0, 0];
+        
+        // 从 transform 样式中提取位置
+        const match = transform.match(/translate3d\((\d+)px,\s*(\d+)px,\s*(\d+)px\)/);
+        if (!match) return [0, 0, 0];
+        
+        const gridSize = Global_grid_config.tile_size;
+        return [
+            Math.round(parseInt(match[1]) / gridSize),
+            Math.round(parseInt(match[2]) / gridSize),
+            parseInt(match[3])
+        ];
+    }
+
+    // 修改 saveAllTileStates 函数中的相关部分
     async function saveAllTileStates() {
         const saveBtn = document.querySelector('.save-btn');
         saveBtn.classList.add('saving');
         
         try {
             const tiles = Array.from(document.querySelectorAll('.tile'));
-            const savePromises = tiles.map(tile => {
+            const contactTiles = [];
+            const scenarioTiles = [];
+            const functionTiles = [];
+            let chatTile = {}; // 将 const 改为 let
+
+            tiles.forEach(tile => {
                 const tileInstance = tileInstances.get(tile);
-                if (tileInstance) {
-                    // 如果是聊天磁贴，先验证尺寸
-                    if (tileInstance instanceof ChatTile) {
-                        tileInstance.validateSize();
-                    }
+                console.log(tileInstance);
+                if (!tileInstance) return;
 
-                    // 获取当前位置和大小
-                    const transform = tile.style.transform;
-                    const size = tile.dataset.size;
+                const transform = tile.style.transform;
+                const size = tile.dataset.size;
+                const position = parseTransformToArray(transform);
 
-                    // 构建状态对象
-                    const state = {
-                        position: transform || 'translate3d(0px, 0px, 0px)',
-                        size: size || '1x1'
+                if (tileInstance instanceof ChatTile) {
+                    chatTile = {
+                        tile: {
+                            position: position,
+                            size: size || '1x1'
+                        }
                     };
-
-                    // 根据磁贴类型构建不同的请求体
-                    let requestBody;
-                    if (tileInstance instanceof ChatTile) {
-                        requestBody = {
-                            id: 'chat_tile',
-                            type: 'chat_tile',
-                            state: state,
-                            mother_language: mother_language
-                        };
-                    } else if (tileInstance instanceof FunctionTile) {
-                        requestBody = {
-                            id: `function_${tileInstance.id}`,
-                            state: state,
-                            mother_language: mother_language
-                        };
-                    } else if (tileInstance instanceof ContactTile) {
-                        requestBody = {
-                            id: `contact_${tileInstance.name}`,
-                            state: state,
-                            mother_language: mother_language
-                        };
-                    } else if (tileInstance instanceof ScenarioTile) {
-                        requestBody = {
-                            id: `scenario_${tileInstance.scenario.name}`,
-                            state: state,
-                            mother_language: mother_language
-                        };
-                    }
-
-                    if (requestBody) {
-                        console.log(`Saving tile state for ${requestBody.id}:`, {
-                            transform: transform,
-                            parsed: state.position
-                        });
-                        return fetch('/api/tile/update', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify(requestBody)
-                        }).then(response => response.json());
-                    }
+                } else if (tileInstance instanceof FunctionTile) {
+                    functionTiles.push({
+                        name: tileInstance.name,
+                        tile: {
+                            position: position,
+                            size: size || '1x1'
+                        }
+                    });
+                } else if (tileInstance instanceof ContactTile) {
+                    contactTiles.push({
+                        name: tileInstance.name,
+                        target_language: tileInstance.contact.target_language,
+                        prompt: tileInstance.contact.prompt,
+                        speed: tileInstance.contact.speed,
+                        voice_engine: tileInstance.contact.voice_engine,
+                        icon: tileInstance.contact.icon,
+                        tile: {
+                            position: position,
+                            size: size || '1x1'
+                        }
+                    });
+                } else if (tileInstance instanceof ScenarioTile) {
+                    scenarioTiles.push({
+                        name: tileInstance.name,
+                        prompt: tileInstance.scenario.prompt,
+                        tile: {
+                            position: position,
+                            size: size || '1x1'
+                        }
+                    });
                 }
-                return Promise.resolve();
             });
 
-            const results = await Promise.all(savePromises);
-            const success = results.every(result => result && result.success);
-
-            if (success) {
-                saveBtn.innerHTML = '<i class="fas fa-check"></i>';
-                setTimeout(() => {
-                    saveBtn.innerHTML = '<i class="fas fa-save"></i>';
-                }, 2000);
-                showGlobalToast(getToastMessage(mother_language));
-            } else {
-                throw new Error('部分磁贴保存失败');
+            // 发送功能磁贴更新
+            if (functionTiles.length > 0) {
+                await fetch('/api/tile/update', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        type: 'function',
+                        tile_instance: functionTiles,
+                        mother_language: mother_language
+                    })
+                });
             }
+
+            // 发送聊天磁贴更新
+            if (Object.keys(chatTile).length > 0) {
+                await fetch('/api/tile/update', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        type: 'chat_tile',
+                        tile_instance: chatTile,
+                        mother_language: mother_language
+                    })
+                });
+            }
+
+            // 发送联系人更新
+            if (contactTiles.length > 0) {
+                await fetch('/api/tile/update', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        type: 'contact',
+                        tile_instance: contactTiles,
+                        mother_language: mother_language
+                    })
+                });
+            }
+
+            // 发送场景更新
+            if (scenarioTiles.length > 0) {
+                await fetch('/api/tile/update', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        type: 'scenario',
+                        tile_instance: scenarioTiles,
+                        mother_language: mother_language
+                    })
+                });
+            }
+
+            saveBtn.innerHTML = '<i class="fas fa-check"></i>';
+            setTimeout(() => {
+                saveBtn.innerHTML = '<i class="fas fa-save"></i>';
+            }, 2000);
         } catch (error) {
-            console.error('保存磁贴状态时出错:', error);
-            saveBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
+            console.error('保存失败:', error);
+            saveBtn.innerHTML = '<i class="fas fa-times"></i>';
             setTimeout(() => {
                 saveBtn.innerHTML = '<i class="fas fa-save"></i>';
             }, 2000);
@@ -2070,7 +2449,6 @@ document.addEventListener('DOMContentLoaded', function() {
             contentArea.innerHTML = this.buffer;
             // 每累积10个字符进行一次渲染
             if (this.buffer.length % 10 === 0) {
-                console.log(this.buffer);
                 if (typeof marked !== 'undefined') {
                     try {
                         contentArea.innerHTML = marked.parse(this.buffer);
@@ -2240,7 +2618,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     async function Load_config() {
         try {
-            // 使用 fetch 直接读取本地 JSON 文件
             const response = await fetch('./config.json');
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -2249,15 +2626,17 @@ document.addEventListener('DOMContentLoaded', function() {
             return config;
         } catch (error) {
             console.error('加载配置失败:', error);
-            // 返回一个默认配置
+            // 返回默认配置
             return {
+                support_languages: ["zh", "en", "ja"],
+                grid_config: {
+                    tile_size: 120,
+                    gap_size: 10
+                },
                 Learn_config: {
-                    zh: {
-                        function_tiles: {},
-                        contact: {},
-                        scene: {},
-                        chat_tile: {}
-                    }
+                    function_tiles: [],
+                    chat_tile: {},
+                    zh: { contacts: [], scenes: [] }
                 }
             };
         }
@@ -2333,4 +2712,563 @@ document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('DOMContentLoaded', () => {
         setupListeningMode();
     });
+
+    // 添加联系人对话框
+    function showAddContactDialog() {
+        // 检查是否已存在对话框
+        const existingModal = document.querySelector('.settings-modal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        const modal = document.createElement('div');
+        modal.className = 'settings-modal modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>添加联系人</h3>
+                    <button class="close-btn"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="contact-name">名称:</label>
+                        <input type="text" id="contact-name" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="target-language">目标语言:</label>
+                        <select id="target-language" class="form-select">
+                            ${support_languages.filter(lang => lang !== mother_language).map(lang => {
+                                const langNames = {
+                                    'zh': '中文',
+                                    'ja': '日本語',
+                                    'en': 'English',
+                                    'fr': 'Français',
+                                    'de': 'Deutsch',
+                                    'es': 'Español',
+                                    'it': 'Italiano',
+                                    'pt': 'Português',
+                                    'ru': 'Русский',
+                                    'ar': 'العربية'
+                                };
+                                return `<option value="${lang}">${langNames[lang] || lang}</option>`;
+                            }).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="contact-prompt">提示词:</label>
+                        <textarea id="contact-prompt" class="form-textarea" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="voice-engine">语音引擎:</label>
+                        <select id="voice-engine" class="form-select">
+                            <option value="RealtimeTTS">RealtimeTTS</option>
+                            <option value="GPT_SoVits">GPT_SoVits</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="voice-speed">语速:</label>
+                        <div class="speed-control">
+                            <input type="range" id="voice-speed" class="form-range" 
+                                   min="0.5" max="2" step="0.1" value="1.0">
+                            <span id="speed-value">1.0</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="contact-icon">头像:</label>
+                        <div class="avatar-select-container">
+                            <select id="avatar-select" class="form-select">
+                                <option value="">选择预设头像</option>
+                            </select>
+                            <div class="avatar-buttons">
+                                <input type="file" id="contact-icon-upload" class="form-input" 
+                                       accept="image/*" style="display: none;">
+                                <input type="text" id="contact-icon" class="form-input" 
+                                       value="./assets/avatars/default_avatar.png" style="display: none;">
+                                <button type="button" class="icon-upload-btn">上传头像</button>
+                            </div>
+                        </div>
+                        <div class="icon-preview">
+                            <img src="./assets/avatars/default_avatar.png" alt="预览" id="icon-preview">
+                        </div>
+                    </div>
+                    <button class="submit-btn">添加</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+        modal.classList.add('active');
+
+        // 初始化头像选择
+        initAvatarSelection(modal);
+
+        // 语速滑块事件
+        const speedInput = modal.querySelector('#voice-speed');
+        const speedValue = modal.querySelector('#speed-value');
+        speedInput.addEventListener('input', () => {
+            speedValue.textContent = speedInput.value;
+        });
+
+        // 关闭按钮事件
+        const closeBtn = modal.querySelector('.close-btn');
+        closeBtn.addEventListener('click', () => {
+            modal.classList.remove('active');
+            setTimeout(() => modal.remove(), 300);
+        });
+
+        // 提交按钮事件
+        const submitBtn = modal.querySelector('.submit-btn');
+        submitBtn.addEventListener('click', () => {
+            const name = modal.querySelector('#contact-name').value.trim();
+            const targetLang = modal.querySelector('#target-language').value;
+            const prompt = modal.querySelector('#contact-prompt').value.trim() || 
+                `你是一个${targetLang === 'en' ? '英语' : targetLang === 'ja' ? '日语' : '语言'}学习伙伴，帮助我学习${targetLang === 'en' ? '英语' : targetLang === 'ja' ? '日语' : targetLang}。`;
+            const voiceEngine = modal.querySelector('#voice-engine').value;
+            const speed = parseFloat(modal.querySelector('#voice-speed').value);
+            const icon = modal.querySelector('#contact-icon').value;
+
+            if (!name) {
+                showGlobalToast('请输入联系人名称');
+                return;
+            }
+
+            const contactData = {
+                name: name,
+                target_language: targetLang,
+                prompt: prompt,
+                speed: speed,
+                voice_engine: voiceEngine,
+                icon: icon
+            };
+
+            tileManager.addContact(contactData);
+            modal.classList.remove('active');
+            setTimeout(() => modal.remove(), 300);
+            showGlobalToast('联系人添加成功');
+        });
+    }
+
+    // 添加场景对话框
+    function showAddScenarioDialog() {
+        // 检查是否已存在对话框
+        const existingModal = document.querySelector('.settings-modal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        const modal = document.createElement('div');
+        modal.className = 'settings-modal modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>添加场景</h3>
+                    <button class="close-btn"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="scenario-name">场景名称:</label>
+                        <input type="text" id="scenario-name" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="scenario-prompt">场景提示词:</label>
+                        <textarea id="scenario-prompt" class="form-textarea" rows="3" 
+                            placeholder="描述场景的具体情况，例如：在咖啡厅中进行日常对话..."></textarea>
+                    </div>
+                    <button class="submit-btn">添加</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+        modal.classList.add('active');
+
+        // 关闭按钮事件
+        const closeBtn = modal.querySelector('.close-btn');
+        closeBtn.addEventListener('click', () => {
+            modal.classList.remove('active');
+            setTimeout(() => modal.remove(), 300);
+        });
+
+        // 提交按钮事件
+        const submitBtn = modal.querySelector('.submit-btn');
+        submitBtn.addEventListener('click', () => {
+            const name = modal.querySelector('#scenario-name').value.trim();
+            const prompt = modal.querySelector('#scenario-prompt').value.trim();
+
+            if (!name) {
+                showGlobalToast('请输入场景名称');
+                return;
+            }
+
+            if (!prompt) {
+                showGlobalToast('请输入场景提示词');
+                return;
+            }
+
+            const scenarioData = {
+                name: name,
+                prompt: prompt
+            };
+
+            tileManager.addScenario(scenarioData);
+            modal.classList.remove('active');
+            setTimeout(() => modal.remove(), 300);
+            showGlobalToast('场景添加成功');
+        });
+    }
+
+    // 编辑联系人对话框
+    function showEditContactDialog(contact) {
+        if (!contact) {
+            showGlobalToast('请将联系人拖入编辑区域');
+            return;
+        }
+
+        const modal = document.createElement('div');
+        modal.className = 'settings-modal modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>编辑联系人</h3>
+                    <button class="close-btn"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="contact-name">名称:</label>
+                        <input type="text" id="contact-name" class="form-input" value="${contact.name}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="target-language">目标语言:</label>
+                        <select id="target-language" class="form-select">
+                            ${support_languages.filter(lang => lang !== mother_language).map(lang => {
+                                const langNames = {
+                                    'zh': '中文',
+                                    'ja': '日本語',
+                                    'en': 'English',
+                                    'fr': 'Français',
+                                    'de': 'Deutsch',
+                                    'es': 'Español',
+                                    'it': 'Italiano',
+                                    'pt': 'Português',
+                                    'ru': 'Русский',
+                                    'ar': 'العربية'
+                                };
+                                return `<option value="${lang}" ${contact.target_language === lang ? 'selected' : ''}>
+                                    ${langNames[lang] || lang}
+                                </option>`;
+                            }).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="contact-prompt">提示词:</label>
+                        <textarea id="contact-prompt" class="form-textarea" rows="3">${contact.prompt}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="voice-engine">语音引擎:</label>
+                        <select id="voice-engine" class="form-select">
+                            <option value="RealtimeTTS" ${contact.voice_engine === 'RealtimeTTS' ? 'selected' : ''}>RealtimeTTS</option>
+                            <option value="GPT_SoVits" ${contact.voice_engine === 'GPT_SoVits' ? 'selected' : ''}>GPT_SoVits</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="voice-speed">语速:</label>
+                        <div class="speed-control">
+                            <input type="range" id="voice-speed" class="form-range" 
+                                   min="0.5" max="2" step="0.1" value="${contact.speed}">
+                            <span id="speed-value">${contact.speed}</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="contact-icon">头像:</label>
+                        <div class="avatar-select-container">
+                            <select id="avatar-select" class="form-select">
+                                <option value="">选择预设头像</option>
+                            </select>
+                            <div class="avatar-buttons">
+                                <input type="file" id="contact-icon-upload" class="form-input" 
+                                       accept="image/*" style="display: none;">
+                                <input type="text" id="contact-icon" class="form-input" 
+                                       value="${contact.icon}" style="display: none;">
+                                <button type="button" class="icon-upload-btn">上传头像</button>
+                            </div>
+                        </div>
+                        <div class="icon-preview">
+                            <img src="${contact.icon}" alt="预览" id="icon-preview">
+                        </div>
+                    </div>
+                    <button class="submit-btn">保存修改</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+        modal.classList.add('active');
+
+        // 初始化头像选择,传入当前头像
+        initAvatarSelection(modal, contact.icon);
+
+        // 语速滑块事件
+        const speedInput = modal.querySelector('#voice-speed');
+        const speedValue = modal.querySelector('#speed-value');
+        speedInput.addEventListener('input', () => {
+            speedValue.textContent = speedInput.value;
+        });
+
+        // 关闭按钮事件
+        const closeBtn = modal.querySelector('.close-btn');
+        closeBtn.addEventListener('click', () => {
+            modal.classList.remove('active');
+            setTimeout(() => modal.remove(), 300);
+        });
+
+        // 提交按钮事件
+        const submitBtn = modal.querySelector('.submit-btn');
+        submitBtn.addEventListener('click', () => {
+            const name = modal.querySelector('#contact-name').value.trim();
+            const targetLang = modal.querySelector('#target-language').value;
+            const prompt = modal.querySelector('#contact-prompt').value.trim();
+            const voiceEngine = modal.querySelector('#voice-engine').value;
+            const speed = parseFloat(modal.querySelector('#voice-speed').value);
+            const icon = modal.querySelector('#contact-icon').value;
+
+            if (!name) {
+                showGlobalToast('请输入联系人名称');
+                return;
+            }
+
+            const updatedContact = {
+                ...contact,
+                name: name,
+                target_language: targetLang,
+                prompt: prompt,
+                speed: speed,
+                voice_engine: voiceEngine,
+                icon: icon
+            };
+
+            tileManager.updateContact(contact.name, updatedContact);
+            modal.classList.remove('active');
+            setTimeout(() => modal.remove(), 300);
+            showGlobalToast('联系人修改成功');
+        });
+    }
+
+    // 编辑场景对话框
+    function showEditScenarioDialog(scenario) {
+        if (!scenario) {
+            showGlobalToast('请将场景拖入编辑区域');
+            return;
+        }
+
+        const modal = document.createElement('div');
+        modal.className = 'settings-modal modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>编辑场景</h3>
+                    <button class="close-btn"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="scenario-name">场景名称:</label>
+                        <input type="text" id="scenario-name" class="form-input" value="${scenario.name}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="scenario-prompt">场景提示词:</label>
+                        <textarea id="scenario-prompt" class="form-textarea" rows="3">${scenario.prompt}</textarea>
+                    </div>
+                    <button class="submit-btn">保存修改</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+        modal.classList.add('active');
+
+        // 关闭按钮事件
+        const closeBtn = modal.querySelector('.close-btn');
+        closeBtn.addEventListener('click', () => {
+            modal.classList.remove('active');
+            setTimeout(() => modal.remove(), 300);
+        });
+
+        // 提交按钮事件
+        const submitBtn = modal.querySelector('.submit-btn');
+        submitBtn.addEventListener('click', () => {
+            const name = modal.querySelector('#scenario-name').value.trim();
+            const prompt = modal.querySelector('#scenario-prompt').value.trim();
+
+            if (!name) {
+                showGlobalToast('请输入场景名称');
+                return;
+            }
+
+            if (!prompt) {
+                showGlobalToast('请输入场景提示词');
+                return;
+            }
+
+            const updatedScenario = {
+                ...scenario,
+                name: name,
+                prompt: prompt
+            };
+
+            tileManager.updateScenario(scenario.name, updatedScenario);
+            modal.classList.remove('active');
+            setTimeout(() => modal.remove(), 300);
+            showGlobalToast('场景修改成功');
+        });
+    }
+
+    // 回收站对话框
+    function showRecycleBinDialog(tile) {
+        if (!tile) {
+            showGlobalToast('请将要删除的磁贴拖入回收站');
+            return;
+        }
+
+        const modal = document.createElement('div');
+        modal.className = 'settings-modal modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>删除确认</h3>
+                    <button class="close-btn"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="modal-body">
+                    <p>确定要删除 "${tile.name}" 吗？此操作不可恢复。</p>
+                    <div class="button-group">
+                        <button class="cancel-btn">取消</button>
+                        <button class="delete-btn">删除</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+        modal.classList.add('active');
+
+        // 关闭按钮事件
+        const closeBtn = modal.querySelector('.close-btn');
+        closeBtn.addEventListener('click', () => {
+            modal.classList.remove('active');
+            setTimeout(() => modal.remove(), 300);
+        });
+
+        // 取消按钮事件
+        const cancelBtn = modal.querySelector('.cancel-btn');
+        cancelBtn.addEventListener('click', () => {
+            modal.classList.remove('active');
+            setTimeout(() => modal.remove(), 300);
+        });
+
+        // 删除按钮事件
+        const deleteBtn = modal.querySelector('.delete-btn');
+        deleteBtn.addEventListener('click', () => {
+            if (tile instanceof ContactTile) {
+                tileManager.deleteContact(tile.name);
+            } else if (tile instanceof ScenarioTile) {
+                tileManager.deleteScenario(tile.name);
+            }
+            modal.classList.remove('active');
+            setTimeout(() => modal.remove(), 300);
+            showGlobalToast('删除成功');
+        });
+    }
+
+    // 获取头像列表的函数
+    async function getAvatarList() {
+        try {
+            const response = await fetch('/api/avatars');
+            const avatars = await response.json();
+            return avatars;
+        } catch (error) {
+            console.error('获取头像列表失败:', error);
+            return ['default_avatar.png']; // 至少返回默认头像
+        }
+    }
+
+    // 修改头像选择部分的HTML和功能
+    function initAvatarSelection(modal, currentIcon = './assets/avatars/default_avatar.png') {
+        const iconInput = modal.querySelector('#contact-icon');
+        const iconPreview = modal.querySelector('#icon-preview');
+        const iconUpload = modal.querySelector('#contact-icon-upload');
+        const avatarSelect = modal.querySelector('#avatar-select');
+        const uploadBtn = modal.querySelector('.icon-upload-btn');
+
+        // 加载头像列表
+        getAvatarList().then(avatars => {
+            avatarSelect.innerHTML = '<option value="">选择预设头像</option>';
+            avatars.forEach(avatar => {
+                const option = document.createElement('option');
+                option.value = `./assets/avatars/${avatar}`;
+                option.textContent = avatar;
+                if (currentIcon === option.value) {
+                    option.selected = true;
+                }
+                avatarSelect.appendChild(option);
+            });
+        });
+
+        // 下拉框change事件
+        avatarSelect.addEventListener('change', () => {
+            if (avatarSelect.value) {
+                iconInput.value = avatarSelect.value;
+                iconPreview.src = avatarSelect.value;
+            }
+        });
+
+        // 上传按钮点击事件
+        uploadBtn.addEventListener('click', () => {
+            iconUpload.click();
+        });
+
+        // 文件上传change事件
+        iconUpload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                if (file.size > 2 * 1024 * 1024) { // 2MB限制
+                    showGlobalToast('图片大小不能超过2MB');
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        // 创建canvas进行图片压缩
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        const maxSize = 200;
+                        
+                        let width = img.width;
+                        let height = img.height;
+                        
+                        if (width > height) {
+                            if (width > maxSize) {
+                                height *= maxSize / width;
+                                width = maxSize;
+                            }
+                        } else {
+                            if (height > maxSize) {
+                                width *= maxSize / height;
+                                height = maxSize;
+                            }
+                        }
+                        
+                        canvas.width = width;
+                        canvas.height = height;
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                        iconInput.value = dataUrl;
+                        iconPreview.src = dataUrl;
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
 });

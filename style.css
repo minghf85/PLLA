@@ -695,26 +695,30 @@ body.dark-mode .theme-btn {
     color: var(--text-color);
 }
 
-.form-group input,
-.form-group select,
-.form-group textarea {
+.form-input, .form-select, .form-textarea {
     width: 100%;
     padding: 8px;
     border: 1px solid var(--border-color);
     border-radius: 4px;
     background: var(--background-color);
     color: var(--text-color);
+    margin-top: 5px;
+}
+
+.form-textarea {
+    resize: vertical;
+    min-height: 80px;
 }
 
 .submit-btn {
+    width: 100%;
+    padding: 10px;
     background: var(--primary-color);
     color: white;
     border: none;
-    padding: 10px 20px;
     border-radius: 4px;
     cursor: pointer;
-    width: 100%;
-    margin-top: 10px;
+    transition: background 0.3s;
 }
 
 .submit-btn:hover {
@@ -956,4 +960,141 @@ body.dark-mode .theme-btn {
 .global-toast.fade-out {
     opacity: 0;
     transition: opacity 0.3s ease;
+}
+
+/* 联系人添加对话框样式 */
+.speed-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.form-range {
+    flex: 1;
+    height: 6px;
+    background: var(--border-color);
+    border-radius: 3px;
+    outline: none;
+}
+
+.form-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    background: var(--primary-color);
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.icon-selection {
+    display: flex;
+    gap: 10px;
+}
+
+.icon-select-btn,
+.icon-upload-btn {
+    padding: 8px 15px;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.icon-select-btn:hover,
+.icon-upload-btn:hover {
+    background: var(--primary-dark);
+}
+
+.icon-preview {
+    margin-top: 10px;
+    text-align: center;
+}
+
+.icon-preview img {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--border-color);
+    transition: transform 0.3s;
+}
+
+.icon-preview img:hover {
+    transform: scale(1.1);
+}
+
+/* 编辑和删除对话框样式 */
+.button-group {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+
+.cancel-btn,
+.delete-btn {
+    padding: 8px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.cancel-btn {
+    background-color: var(--border-color);
+    color: var(--text-color);
+}
+
+.delete-btn {
+    background-color: #e74c3c;
+    color: white;
+}
+
+.cancel-btn:hover {
+    background-color: var(--border-hover-color);
+}
+
+.delete-btn:hover {
+    background-color: #c0392b;
+}
+
+/* 拖拽目标区域高亮 */
+.tile.drag-target {
+    border: 2px dashed var(--primary-color);
+    background-color: var(--primary-light);
+}
+
+.avatar-select-container {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.avatar-select-container select {
+    flex: 1;
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+}
+
+.avatar-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.icon-upload-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    background-color: var(--primary-color);
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.icon-upload-btn:hover {
+    background-color: var(--primary-dark);
 }

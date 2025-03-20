@@ -32,10 +32,10 @@ def get_config():
 def update_tile():
     try:
         data = request.json
-        tile_id = data.get('id')
-        state = data.get('state')
+        tile_type = data.get('type')
+        tile_instance = data.get('tile_instance')
         mother_language = data.get('mother_language')
-        success = config.update_tile_state(mother_language, tile_id, state)
+        success = config.update_tile_state(mother_language, tile_type, tile_instance)
         return jsonify({'success': success})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -91,6 +91,19 @@ def chat():
 #         return jsonify({'success': success})
 #     except Exception as e:
 #         return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/avatars', methods=['GET'])
+def get_avatars():
+    try:
+        avatar_dir = os.path.join(os.path.dirname(__file__), 'assets', 'avatars')
+        avatars = []
+        for file in os.listdir(avatar_dir):
+            if file.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
+                avatars.append(file)
+        return jsonify(avatars)
+    except Exception as e:
+        print(f"Error getting avatar list: {str(e)}")
+        return jsonify(['default_avatar.png'])
 
 if __name__ == '__main__':
     app.run(debug=True)

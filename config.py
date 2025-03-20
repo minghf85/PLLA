@@ -22,80 +22,59 @@ class Config:
         except Exception as e:
             print(f"错误：保存配置文件时发生异常: {str(e)}")
             return False
-    def update_tile_state(self, mother_language, tile_id, state):
-        """更新磁贴状态"""
+    def update_tile_state(self, mother_language, tile_type, tile_instance):
+        """更新磁贴配置"""
         try:
-            # 移除width和height，只保留position和size
-            state = {
-                'position': state.get('position'),
-                'size': state.get('size')
-            }
-            
-            # 将 position 从 translate3d 格式转换为数组格式
-            if state['position']:
-                # 从 translate3d(Xpx, Ypx, Zpx) 提取数值
-                pos_string = state['position']
-                # 提取括号内的内容
-                pos_string = pos_string[pos_string.find('(')+1:pos_string.find(')')]
-                # 分割并清理每个值
-                pos_parts = [part.strip().replace('px', '') for part in pos_string.split(',')]
-                # 转换为浮点数
-                pos_values = [float(x) for x in pos_parts]
+            if tile_type == 'chat_tile':
+                # 更新聊天磁贴配置
+                self.config['Learn_config']['chat_tile'] = tile_instance
                 
-                # 获取网格大小
-                grid_size = float(self.config.get('grid_config', {}).get('tile_size', 120))
-                
-                # 使用round确保正确的四舍五入，并转换为整数
-                state['position'] = [
-                    int(round(pos_values[0]/grid_size)),
-                    int(round(pos_values[1]/grid_size)),
-                    int(pos_values[2])
-                ]
-                
-                # 验证计算结果
-                print(f"Position conversion:{tile_id}, raw:{pos_string} -> values:{pos_values} -> final:{state['position']}")
-            
-            if tile_id == 'chat_tile':
-                self.config['Learn_config']['chat_tile']['tile'] = state
+            elif tile_type == 'function':
+                # 更新功能磁贴配置
+                for func_tile in self.config['Learn_config']['function_tiles']:
+                    if func_tile['name'] == tile_instance['name']:
+                        func_tile.update(tile_instance)
+                        break
+                    
             else:
-                # 添加对tile_id格式的验证
-                if '_' not in tile_id:
-                    raise ValueError(f"无效的tile_id格式: {tile_id}")
-                    
-                tile_type, name = tile_id.split('_', 1)
+                # 确保语言配置存在
+                if mother_language not in self.config['Learn_config']:
+                    self.config['Learn_config'][mother_language] = {
+                        'contacts': [],
+                        'scenes': []
+                    }
                 
-                if tile_type == 'function':
-                    # 在function_tiles数组中查找并更新对应的功能磁贴
-                    for func_tile in self.config['Learn_config']['function_tiles']:
-                        if func_tile['name'] == name:
-                            func_tile['tile'] = state
-                            break
-                else:
-                    # 确保语言配置存在
-                    if mother_language not in self.config['Learn_config']:
-                        self.config['Learn_config'][mother_language] = {
-                            'contacts': [],
-                            'scenes': []
-                        }
+                if tile_type == 'contact':
+                    # 直接更新联系人列表
+                    contacts = []
+                    for tile in tile_instance:
+                        contacts.append({
+                            'name': tile['name'],
+                            'target_language': tile['target_language'],
+                            'prompt': tile['prompt'],
+                            'speed': tile['speed'],
+                            'voice_engine': tile['voice_engine'],
+                            'icon': tile['icon'],
+                            'tile': tile['tile']
+                        })
+                    self.config['Learn_config'][mother_language]['contacts'] = contacts
                     
-                    if tile_type == 'contact':
-                        # 在contacts数组中查找并更新对应的联系人
-                        for contact in self.config['Learn_config'][mother_language]['contacts']:
-                            if contact['name'] == name:
-                                contact['tile'] = state
-                                break
-                    elif tile_type == 'scenario':
-                        # 在scenes数组中查找并更新对应的场景
-                        for scene in self.config['Learn_config'][mother_language]['scenes']:
-                            if scene['name'] == name:
-                                scene['tile'] = state
-                                break
-                    else:
-                        raise ValueError(f"未知的磁贴类型: {tile_type}")
+                elif tile_type == 'scenario':
+                    # 直接更新场景列表
+                    scenes = []
+                    for tile in tile_instance:
+                        scenes.append({
+                            'name': tile['name'],
+                            'prompt': tile['prompt'],
+                            'tile': tile['tile']
+                        })
+                    self.config['Learn_config'][mother_language]['scenes'] = scenes
+                else:
+                    raise ValueError(f"未知的磁贴类型: {tile_type}")
             
             return self.save_config()
         except Exception as e:
-            print(f"错误：更新磁贴状态时发生异常: {str(e)}")
+            print(f"错误：更新磁贴配置时发生异常: {str(e)}")
             return False
 
     
