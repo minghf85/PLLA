@@ -426,7 +426,7 @@ if __name__ == '__main__':
 
     recorder_config = {
         'spinner': False,
-        'model': 'large-v3',
+        'model': 'large-v2',
         #'realtime_model_type': 'medium.en',
         'realtime_model_type': 'tiny',
         'language': 'ja',

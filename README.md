@@ -82,3 +82,18 @@ $$x = {-b \pm \sqrt{b^2-4ac} \over 2a}$$
   此处可书写文本
   嗯，是可以书写文本的
 </details>
+
+为句子语法和特殊词语做说明以及注音，输出格式为
+<details>
+    <summary>分析</summary>
+    [语法分析]
+    [特殊词语注音以及解释]
+</details>
+
+<details>
+  <summary>翻译</summary>
+  [翻译内容]
+  
+  注释：
+  [如有必要，在这里添加翻译说明]
+</details>

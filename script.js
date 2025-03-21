@@ -36,6 +36,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     mother_language = localStorage.getItem('mother_language') || "zh";
     support_languages = Global_config.support_languages || ["zh", "en", "ja"];
     Global_grid_config = Global_config.grid_config || {tile_size: 120, gap_size: 10};
+    Engine_config = Global_config.Engine_config;
+    TTS_config = Engine_config.TTS;
+    STT_config = Engine_config.STT;
     console.log(Global_grid_config);
     console.log('Supported languages:', support_languages);
 
@@ -1130,22 +1133,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                 showRecycleBinDialog();
             }
         },
-        "load-unload-STT": {
-            title: '加载卸载STT',
-            icon: 'fas fa-microphone',
-            color: '#9b59b6',
-            action: () => {
-                console.log('加载卸载STT');
-            }
-        },
-        "load-unload-TTS": {
-            title: '加载卸载TTS',
-            icon: 'fas fa-volume-up',
-            color: '#3498db',
-            action: () => {
-                console.log('加载卸载TTS');
-            }
-        },
         save: {
             title: '保存布局',
             icon: 'fas fa-save',
@@ -1185,6 +1172,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                 }
             });
         }
+
+        
     }
 
     // 修改 ContainerTile 类
@@ -1263,15 +1252,21 @@ document.addEventListener('DOMContentLoaded', async function() {
     class ChatTile extends ContainerTile {
         constructor(options = {}) {
             super('chat', options);
-            this.chatHistory = [];
+            this.current_session_id = '1';
+            this.current_session_name = '初次对话';
+            this.current_historys = [];
             this.current_contact = 'default';
             this.current_scenario = 'default';
             this.current_prompt = "default";
+            this.target_language = 'en';
+            this.mother_language = mother_language;
             ChatTile.instance = this;
+            this.chatHistory = [];  // 初始化为空数组
         }
 
         updateCurrentContact(contact) {
             this.current_contact = contact;
+            this.target_language = contact.target_language;
             const contactNameElement = this.element.querySelector('.contact-name');
             if (contactNameElement) {
                 contactNameElement.textContent = contact;
@@ -1311,7 +1306,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
             if (mother_language === 'zh') {
                 if (contactInfo) {
-                    prompt = `你是${contactInfo.name}。请只用${targetLang}语回复，不要解释。你的人设是：${contactInfo.prompt || ''}`;
+                    prompt = `你是${contactInfo.name}。请只用${targetLang}语回复，不要解释，尽量口语化和符合当地文化。你的人设是：${contactInfo.prompt || ''}`;
                     if (scenarioInfo) {
                         prompt += `\n场景：${scenarioInfo.name}。${scenarioInfo.prompt}`;
                     }
@@ -1319,7 +1314,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             } 
             else if (mother_language === 'en') {
                 if (contactInfo) {
-                    prompt = `You are ${contactInfo.name}. Please respond only in ${targetLang}, without explanations. Your persona is: ${contactInfo.prompt || ''}`;
+                    prompt = `You are ${contactInfo.name}. Please respond only in ${targetLang}, without explanations and try to be colloquial and in line with local culture. Your persona is: ${contactInfo.prompt || ''}`;
                     if (scenarioInfo) {
                         prompt += `\nScene: ${scenarioInfo.name}. ${scenarioInfo.prompt}`;
                     }
@@ -1327,7 +1322,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             } 
             else if (mother_language === 'ja') {
                 if (contactInfo) {
-                    prompt = `あなたは${contactInfo.name}です。${targetLang}だけで返信してください。説明は不要です。あなたの人設は：${contactInfo.prompt || ''}`;
+                    prompt = `あなたは${contactInfo.name}です。${targetLang}のみで返信してください。説明は不要で、できるだけ口語的で現地の文化に合わせた表現を使ってください。あなたの設定は：${contactInfo.prompt || ''}`;
                     if (scenarioInfo) {
                         prompt += `\nシーン：${scenarioInfo.name}。${scenarioInfo.prompt}`;
                     }
@@ -1386,6 +1381,9 @@ document.addEventListener('DOMContentLoaded', async function() {
                                 </div>
                             </div>
                             <div class="header-right">
+                                <button class="stt-load-btn" title="加载STT">
+                                    <i class="fas fa-microphone-slash"></i>
+                                </button>
                                 <button class="new-chat-btn" title="新建对话">
                                     <i class="fas fa-plus"></i>
                                 </button>
@@ -1426,7 +1424,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             return tile;
         }
 
-        bindChatEvents(tile) {
+        async bindChatEvents(tile) {
             const input = tile.querySelector('.chat-input');
             const sendBtn = tile.querySelector('.send-btn');
             const messagesContainer = tile.querySelector('.chat-messages');
@@ -1437,6 +1435,75 @@ document.addEventListener('DOMContentLoaded', async function() {
             const autoPlayBtn = tile.querySelector('.auto-play');
             const voiceInputBtn = tile.querySelector('.voice-input');
             const newChatBtn = tile.querySelector('.new-chat-btn');
+
+            // 加载历史记录
+            try {
+                this.chatHistory = await Load_ChatHistorys();
+            } catch (error) {
+                console.error('加载历史记录失败:', error);
+                this.chatHistory = [];
+            }
+
+            // 渲染历史消息列表
+            const renderHistoryList = () => {
+                const historyList = tile.querySelector('.history-list');
+                historyList.innerHTML = '';
+                
+                if (Array.isArray(this.chatHistory)) {
+                    this.chatHistory.forEach(history => {
+                        const historyItem = document.createElement('div');
+                        historyItem.className = 'history-item';
+                        historyItem.innerHTML = `
+                            <div class="history-item-left">
+                                <div class="history-item-title">${history.title}</div>
+                                <div class="history-item-date">${history.date}</div>
+                            </div>
+                            <div class="history-item-actions">
+                                <button class="rename-btn" title="重命名">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="delete-btn" title="删除">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        `;
+
+                        // 点击加载对话
+                        historyItem.addEventListener('click', (e) => {
+                            if (!e.target.closest('.history-item-actions')) {
+                                console.log('加载对话:', history.id);
+                                historyMenu.classList.remove('active');
+                                historyBtn.classList.remove('active');
+                            }
+                        });
+
+                        // 重命名按钮事件
+                        historyItem.querySelector('.rename-btn').addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            const newTitle = prompt('请输入新的标题', history.title);
+                            if (newTitle && newTitle.trim()) {
+                                history.rename(newTitle.trim());
+                                renderHistoryList();
+                            }
+                        });
+
+                        // 删除按钮事件
+                        historyItem.querySelector('.delete-btn').addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            if (confirm('确定要删除这条对话记录吗？')) {
+                                history.delete();
+                                this.chatHistory.splice(this.chatHistory.indexOf(history), 1);
+                                renderHistoryList();
+                            }
+                        });
+
+                        historyList.appendChild(historyItem);
+                    });
+                }
+            };
+
+            // 初始渲染历史消息列表
+            renderHistoryList();
 
             // 历史消息下拉菜单
             document.addEventListener('click', (e) => {
@@ -1464,77 +1531,11 @@ document.addEventListener('DOMContentLoaded', async function() {
                 });
             });
 
-            // 模拟一些历史消息数据
-            this.chatHistory = [
-                new ChatHistory('1', '商业计划书讨论', '今天'),
-                new ChatHistory('2', '技术方案评审', '7 天内'),
-                new ChatHistory('3', '产品需求分析', '7 天内')
-            ];
-
-            // 渲染历史消息列表
-            const renderHistoryList = () => {
-                const historyList = tile.querySelector('.history-list');
-                historyList.innerHTML = '';
-                
-                this.chatHistory.forEach(history => {
-                    const historyItem = document.createElement('div');
-                    historyItem.className = 'history-item';
-                    historyItem.innerHTML = `
-                        <div class="history-item-left">
-                            <div class="history-item-title">${history.title}</div>
-                            <div class="history-item-date">${history.date}</div>
-                        </div>
-                        <div class="history-item-actions">
-                            <button class="rename-btn" title="重命名">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="delete-btn" title="删除">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    `;
-
-                    // 点击加载对话
-                    historyItem.addEventListener('click', (e) => {
-                        if (!e.target.closest('.history-item-actions')) {
-                            console.log('加载对话:', history.id);
-                            historyMenu.classList.remove('active');
-                            historyBtn.classList.remove('active');
-                        }
-                    });
-
-                    // 重命名按钮事件
-                    historyItem.querySelector('.rename-btn').addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        const newTitle = prompt('请输入新的标题', history.title);
-                        if (newTitle && newTitle.trim()) {
-                            history.rename(newTitle.trim());
-                            renderHistoryList();
-                        }
-                    });
-
-                    // 删除按钮事件
-                    historyItem.querySelector('.delete-btn').addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        if (confirm('确定要删除这条对话记录吗？')) {
-                            history.delete();
-                            this.chatHistory.splice(this.chatHistory.indexOf(history), 1);
-                            renderHistoryList();
-                        }
-                    });
-
-                    historyList.appendChild(historyItem);
-                });
-            };
-
             // 新建对话按钮事件
             newChatBtn.addEventListener('click', () => {
                 console.log('新建对话');
                 // TODO: 清空当前对话，准备新对话
             });
-
-            // 初始渲染历史消息列表
-            renderHistoryList();
 
             // 听力模式切换
             listeningModeBtn.addEventListener('click', () => {
@@ -1609,6 +1610,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             // 修改发送消息的函数
             const sendMessage = async () => {
                 const message = input.value.trim();
+                this.content = message;
                 if (message) {
                     // 创建用户消息
                     const userMsg = new UserMessage(message);
@@ -1633,7 +1635,11 @@ document.addEventListener('DOMContentLoaded', async function() {
                             headers: {
                                 'Content-Type': 'application/json',
                             },
-                            body: JSON.stringify({ message })
+                            body: JSON.stringify({
+                                prompt: this.current_prompt,
+                                message: this.content,
+                                history: this.chatHistory
+                             })
                         });
 
                         // 创建 EventSource 来接收流式响应
@@ -1673,6 +1679,89 @@ document.addEventListener('DOMContentLoaded', async function() {
             input.addEventListener('mousedown', (e) => {
                 e.stopPropagation();
             });
+
+            // STT 加载按钮
+            const sttLoadBtn = tile.querySelector('.stt-load-btn');
+            
+            // 初始化时检查 STT 状态
+            checkSTTStatus();
+            
+            sttLoadBtn.addEventListener('click', async function() {
+                const isLoaded = sttLoadBtn.classList.contains('loaded');
+                
+                // 设置加载中状态
+                sttLoadBtn.classList.add('loading');
+                const icon = sttLoadBtn.querySelector('i');
+                icon.className = 'fas fa-spinner';
+                
+                try {
+                    if (!isLoaded) {
+                        // 加载 STT
+                        const response = await fetch('/api/stt/load', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            }
+                        });
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            sttLoadBtn.classList.add('loaded');
+                            icon.className = 'fas fa-microphone';
+                            sttLoadBtn.title = '卸载STT';
+                            showGlobalToast('STT模型加载成功');
+                        } else {
+                            icon.className = 'fas fa-microphone-slash';
+                            showGlobalToast(data.message || 'STT模型加载失败');
+                        }
+                    } else {
+                        // 卸载 STT
+                        const response = await fetch('/api/stt/unload', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            }
+                        });
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            sttLoadBtn.classList.remove('loaded');
+                            icon.className = 'fas fa-microphone-slash';
+                            sttLoadBtn.title = '加载STT';
+                            showGlobalToast('STT模型已卸载');
+                        } else {
+                            icon.className = 'fas fa-microphone';
+                            showGlobalToast(data.message || 'STT模型卸载失败');
+                        }
+                    }
+                } catch (error) {
+                    console.error('STT操作失败:', error);
+                    icon.className = isLoaded ? 'fas fa-microphone' : 'fas fa-microphone-slash';
+                    showGlobalToast('STT操作失败，请重试');
+                } finally {
+                    sttLoadBtn.classList.remove('loading');
+                }
+            });
+            
+            // 检查 STT 状态的函数
+            async function checkSTTStatus() {
+                try {
+                    const response = await fetch('/api/stt/status');
+                    const data = await response.json();
+                    
+                    if (data.loaded) {
+                        sttLoadBtn.classList.add('loaded');
+                        sttLoadBtn.querySelector('i').className = 'fas fa-microphone';
+                        sttLoadBtn.title = '卸载STT';
+                    } else {
+                        sttLoadBtn.classList.remove('loaded');
+                        sttLoadBtn.querySelector('i').className = 'fas fa-microphone-slash';
+                        sttLoadBtn.title = '加载STT';
+                    }
+                } catch (error) {
+                    console.error('获取STT状态失败:', error);
+                }
+            }
         }
 
         addMessage(text, type = 'sent') {
@@ -1714,6 +1803,120 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
+    async function Load_Session(session_id) {
+        try {
+            const response = await fetch(`/api/session/${session_id}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            // 更新 ChatTile 实例的状态
+            ChatTile.instance.current_session_id = data.session.id;
+            ChatTile.instance.current_session_name = data.session.name;
+            ChatTile.instance.current_contact = data.session.contact;
+            ChatTile.instance.current_scenario = data.session.scenario;
+            
+            // 清空当前消息容器
+            const messagesContainer = document.querySelector('.chat-messages');
+            messagesContainer.innerHTML = '';
+            
+            // 重新加载消息
+            data.messages.forEach(msg => {
+                const messageInstance = msg.is_user ? 
+                    new UserMessage(msg.content) : 
+                    new AIMessage(msg.content, {
+                        isListeningMode: Global_isListeningMode
+                    });
+                
+                messagesContainer.appendChild(messageInstance.element);
+                
+                // 如果有分析，添加分析部分
+                if (msg.analysis) {
+                    const contentArea = messageInstance.element.querySelector('.message-content');
+                    contentArea.innerHTML += `
+                        <details class="analysis-section">
+                            <summary>分析</summary>
+                            <div class="analysis-content">${msg.analysis}</div>
+                        </details>
+                    `;
+                }
+                
+                // 如果有翻译，添加翻译部分
+                if (msg.translation) {
+                    const contentArea = messageInstance.element.querySelector('.message-content');
+                    contentArea.innerHTML += `
+                        <details class="translation-section">
+                            <summary>翻译</summary>
+                            <div class="translation-content">${msg.translation}</div>
+                        </details>
+                    `;
+                }
+            });
+            
+            // 更新界面显示
+            const contactNameElement = document.querySelector('.contact-name');
+            const scenarioNameElement = document.querySelector('.scenario-name');
+            if (contactNameElement) contactNameElement.textContent = data.session.contact;
+            if (scenarioNameElement) scenarioNameElement.textContent = data.session.scenario;
+            
+        } catch (error) {
+            console.error('加载会话失败:', error);
+            showGlobalToast('加载会话失败');
+        }
+    }
+
+    async function Load_ChatHistorys() {
+        try {
+            const response = await fetch('/api/sessions');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const sessions = await response.json();
+            console.log(sessions);
+            return sessions.map(session => 
+                new ChatHistory(
+                    session.id,
+                    session.name,
+                    session.time
+                )
+            );
+        } catch (error) {
+            console.error('加载历史记录失败:', error);
+            showGlobalToast('加载历史记录失败');
+            return [];
+        }
+    }
+
+    // 添加保存消息的函数
+    async function saveMessage(message, isUser = true) {
+        try {
+            const response = await fetch('/api/session', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    session_id: ChatTile.instance.current_session_id,
+                    content: message.content,
+                    analysis: message.analysis,
+                    translation: message.translation,
+                    is_user: isUser
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('保存消息失败:', error);
+            showGlobalToast('保存消息失败');
+        }
+    }
     // 修改 TileManager 类
     class TileManager {
         constructor() {
@@ -2511,8 +2714,8 @@ document.addEventListener('DOMContentLoaded', async function() {
             if (!this.buffer) {
                 this.buffer = '';  // 初始化buffer作为类属性
             }
-            
             // 累积接收到的内容
+            this.content += token;
             this.buffer += token;
             contentArea.innerHTML = this.buffer;
             // 每累积10个字符进行一次渲染
@@ -2583,10 +2786,177 @@ document.addEventListener('DOMContentLoaded', async function() {
                         icon: 'fa-comment-dots',
                         title: '分析',
                         onClick: () => this.analyze()
+                    },
+                    {
+                        icon: 'fa-language',
+                        title: '翻译',
+                        onClick: () => this.translate()
                     }
                 ]
             });
             this.element.classList.add('user-message');
+        }
+
+        async analyze() {
+            const contentArea = this.element.querySelector('.message-content');
+            
+            // 检查是否已经有分析部分
+            if (contentArea.querySelector('.analysis-section')) {
+                this.showGlobalToast('已存在分析');
+                return;
+            }
+
+            // 创建分析部分的 HTML
+            const analysisHtml = `
+                <details class="analysis-section" open>
+                    <summary>分析</summary>
+                    <div class="analysis-content">正在分析...</div>
+                </details>
+            `;
+            
+            // 添加到现有内容后面
+            contentArea.innerHTML += analysisHtml;
+            
+            const analysisContent = contentArea.querySelector('.analysis-content');
+            let analysisBuffer = '';
+
+            try {
+                // 发送分析请求
+                const response = await fetch('/api/user_analysis', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        sentence: this.content,
+                        mother_language: ChatTile.instance.mother_language || 'zh',
+                        target_language: ChatTile.instance.target_language || 'en'
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                // 处理流式响应
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const token = decoder.decode(value, { stream: true });
+                    if (token.includes('分析失败')) {
+                        throw new Error(token);
+                    }
+                    
+                    analysisBuffer += token;
+                    
+                    // 使用 marked 渲染 Markdown
+                    if (typeof marked !== 'undefined') {
+                        try {
+                            analysisContent.innerHTML = marked.parse(analysisBuffer);
+                            
+                            // 代码高亮
+                            analysisContent.querySelectorAll('pre code').forEach((block) => {
+                                if (typeof hljs !== 'undefined') {
+                                    hljs.highlightElement(block);
+                                }
+                            });
+                        } catch (e) {
+                            analysisContent.textContent = analysisBuffer;
+                        }
+                    } else {
+                        analysisContent.textContent = analysisBuffer;
+                    }
+                }
+            } catch (error) {
+                console.error('分析失败:', error);
+                analysisContent.innerHTML = `<div class="error-message">分析失败: ${error.message}</div>`;
+                this.showGlobalToast('分析失败');
+            }
+        }
+
+        async translate() {
+            const contentArea = this.element.querySelector('.message-content');
+            
+            // 检查是否已经有翻译部分
+            if (contentArea.querySelector('.translation-section')) {
+                this.showGlobalToast('已存在翻译');
+                return;
+            }
+
+            // 创建翻译部分的 HTML
+            const translationHtml = `
+                <details class="translation-section" open>
+                    <summary>翻译</summary>
+                    <div class="translation-content">正在翻译...</div>
+                </details>
+            `;
+            
+            // 添加到现有内容后面
+            contentArea.innerHTML += translationHtml;
+            
+            const translationContent = contentArea.querySelector('.translation-content');
+            let translationBuffer = '';
+
+            try {
+                // 发送翻译请求
+                const response = await fetch('/api/translation', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        sentence: this.content,
+                        target_language: ChatTile.instance.target_language || 'en',
+                        mother_language: ChatTile.instance.mother_language || 'zh'
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                // 处理流式响应
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const token = decoder.decode(value, { stream: true });
+                    if (token.includes('翻译失败')) {
+                        throw new Error(token);
+                    }
+                    
+                    translationBuffer += token;
+                    
+                    // 使用 marked 渲染 Markdown
+                    if (typeof marked !== 'undefined') {
+                        try {
+                            translationContent.innerHTML = marked.parse(translationBuffer);
+                            
+                            // 代码高亮
+                            translationContent.querySelectorAll('pre code').forEach((block) => {
+                                if (typeof hljs !== 'undefined') {
+                                    hljs.highlightElement(block);
+                                }
+                            });
+                        } catch (e) {
+                            translationContent.textContent = translationBuffer;
+                        }
+                    } else {
+                        translationContent.textContent = translationBuffer;
+                    }
+                }
+            } catch (error) {
+                console.error('翻译失败:', error);
+                translationContent.innerHTML = `<div class="error-message">翻译失败: ${error.message}</div>`;
+                this.showGlobalToast('翻译失败');
+            }
         }
     }
 
@@ -2620,11 +2990,17 @@ document.addEventListener('DOMContentLoaded', async function() {
                         icon: 'fa-eye',
                         title: options.isListeningMode ? '显示' : '隐藏',
                         onClick: () => this.toggleVisibility()
+                    },
+                    {
+                        icon: 'fa-search',  // 使用一个更合适的 FontAwesome 图标
+                        title: '帮忙回答',
+                        onClick: () => this.helpAnswer()
                     }
                 ]
             });
             this.element.classList.add('ai-message');
             this.isListeningMode = options.isListeningMode;
+            this.messageHistory = options.messageHistory || [];
             this.cachedContent = ''; // 初始化缓存内容
             
             // 初始化消息状态，跟随全局听力模式
@@ -2634,6 +3010,12 @@ document.addEventListener('DOMContentLoaded', async function() {
             else{
                 this.element.querySelector('.message-content').classList.remove('content-masked');
             }
+        }
+
+        // 添加帮助回答方法
+        helpAnswer() {
+            console.log('帮忙回答功能待实现');
+            this.showGlobalToast('帮忙回答功能开发中');
         }
 
         toggleVisibility() {
@@ -2655,25 +3037,188 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
 
         speak() {
+            
             console.log('朗读功能待实现');
             this.showGlobalToast('朗读功能开发中');
         }
 
-        analyze() {
-            console.log('分析功能待实现');
-            this.showGlobalToast('分析功能开发中');
+        async analyze() {
+            const contentArea = this.element.querySelector('.message-content');
+            
+            // 检查是否已经有分析部分
+            if (contentArea.querySelector('.analysis-section')) {
+                this.showGlobalToast('已存在分析');
+                return;
+            }
+
+            // 创建分析部分的 HTML
+            const analysisHtml = `
+                <details class="analysis-section" open>
+                    <summary>分析</summary>
+                    <div class="analysis-content">正在分析...</div>
+                </details>
+            `;
+            
+            // 添加到现有内容后面
+            contentArea.innerHTML += analysisHtml;
+            
+            const analysisContent = contentArea.querySelector('.analysis-content');
+            let analysisBuffer = '';
+
+            try {
+                // 发送分析请求
+                const response = await fetch('/api/aimsg_analysis', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        sentence: this.content,
+                        mother_language: ChatTile.instance.mother_language || 'zh',
+                        target_language: ChatTile.instance.target_language || 'en'
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                // 处理流式响应
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const token = decoder.decode(value, { stream: true });
+                    if (token.includes('分析失败')) {
+                        throw new Error(token);
+                    }
+                    
+                    analysisBuffer += token;
+                    
+                    // 使用 marked 渲染 Markdown
+                    if (typeof marked !== 'undefined') {
+                        try {
+                            analysisContent.innerHTML = marked.parse(analysisBuffer);
+                            
+                            // 代码高亮
+                            analysisContent.querySelectorAll('pre code').forEach((block) => {
+                                if (typeof hljs !== 'undefined') {
+                                    hljs.highlightElement(block);
+                                }
+                            });
+                        } catch (e) {
+                            analysisContent.textContent = analysisBuffer;
+                        }
+                    } else {
+                        analysisContent.textContent = analysisBuffer;
+                    }
+                }
+            } catch (error) {
+                console.error('分析失败:', error);
+                analysisContent.innerHTML = `<div class="error-message">分析失败: ${error.message}</div>`;
+                this.showGlobalToast('分析失败');
+            }
         }
 
-        translate() {
-            console.log('翻译功能待实现');
-            this.showGlobalToast('翻译功能开发中');
+        async translate() {
+            const contentArea = this.element.querySelector('.message-content');
+            
+            // 检查是否已经有翻译部分
+            if (contentArea.querySelector('.translation-section')) {
+                this.showGlobalToast('已存在翻译');
+                return;
+            }
+
+            // 创建翻译部分的 HTML
+            const translationHtml = `
+                <details class="translation-section" open>
+                    <summary>翻译</summary>
+                    <div class="translation-content">正在翻译...</div>
+                </details>
+            `;
+            
+            // 添加到现有内容后面
+            contentArea.innerHTML += translationHtml;
+            
+            const translationContent = contentArea.querySelector('.translation-content');
+            let translationBuffer = '';
+
+            try {
+                // 发送翻译请求
+                const response = await fetch('/api/translation', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        sentence: this.content,
+                        target_language: ChatTile.instance.target_language || 'en',
+                        mother_language: ChatTile.instance.mother_language || 'zh'
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                // 处理流式响应
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const token = decoder.decode(value, { stream: true });
+                    if (token.includes('翻译失败')) {
+                        throw new Error(token);
+                    }
+                    
+                    translationBuffer += token;
+                    
+                    // 使用 marked 渲染 Markdown
+                    if (typeof marked !== 'undefined') {
+                        try {
+                            translationContent.innerHTML = marked.parse(translationBuffer);
+                            
+                            // 代码高亮
+                            translationContent.querySelectorAll('pre code').forEach((block) => {
+                                if (typeof hljs !== 'undefined') {
+                                    hljs.highlightElement(block);
+                                }
+                            });
+                        } catch (e) {
+                            translationContent.textContent = translationBuffer;
+                        }
+                    } else {
+                        translationContent.textContent = translationBuffer;
+                    }
+                }
+            } catch (error) {
+                console.error('翻译失败:', error);
+                translationContent.innerHTML = `<div class="error-message">翻译失败: ${error.message}</div>`;
+                this.showGlobalToast('翻译失败');
+            }
         }
     }
-    class STT_uniform_engine {//输入为mother_language和模型，输出为文本迭代器(流式输出)
+    class STT_uniform_engine {//输入为mother_language和模型以及网页音频流，输出为文本迭代器(流式输出)
         //必须要有加载模型过程
-        constructor(mother_language, model){
+        constructor(mother_language, model, audio_stream){
             this.mother_language = mother_language;
             this.model = model;
+            this.audio_stream = audio_stream;
+        }
+        async load_model(){
+            //加载模型
+        }
+        async process_audio_stream(){
+            //处理音频流
+        }
+        async get_text(){
+            //获取文本
         }
     }
 
@@ -2781,6 +3326,217 @@ document.addEventListener('DOMContentLoaded', async function() {
         setupListeningMode();
     });
 
+    // 添加获取引擎列表的函数
+    async function loadEngineList(TTS_type) {
+        try {
+            const port = 8000;
+            const response = await fetch(`http://127.0.0.1:${port}/engines`);
+            console.log(response);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const engines = await response.json();
+            // 根据 TTS_type 过滤引擎
+            return TTS_config
+                .filter(config => config.TTS_type === TTS_type)
+                .filter(config => engines.includes(config.engine_name.toLowerCase()));
+        } catch (error) {
+            console.error('获取引擎列表失败:', error);
+            showGlobalToast('获取引擎列表失败');
+            return [];
+        }
+    }
+
+    // 修改对话框中的语音引擎选择部分
+    function createVoiceEngineSelectionHTML() {
+        return `
+            <div class="form-group voice-engine-tabs">
+                <div class="tab-buttons">
+                    <button type="button" class="tab-btn active" data-tab="realtimetts">RealtimeTTS</button>
+                    <button type="button" class="tab-btn" data-tab="gpt-sovits">GPT-SoVits</button>
+                </div>
+                <div class="tab-content">
+                    <div class="tab-pane active" id="realtimetts-tab">
+                        <div class="form-group engine-selection">
+                            <label for="engine-name">选择引擎:</label>
+                            <select id="engine-name" class="form-select">
+                                <!-- 引擎选项将动态加载 -->
+                            </select>
+                        </div>
+                        <div class="form-group voice-selection" style="display: none;">
+                            <label for="voice-name">选择声音:</label>
+                            <select id="voice-name" class="form-select">
+                                <!-- 声音选项将动态加载 -->
+                            </select>
+                            <button type="button" class="preview-voice-btn">试听</button>
+                        </div>
+                    </div>
+                    <div class="tab-pane" id="gpt-sovits-tab">
+                        <div class="form-group">
+                            <p class="note">GPT-SoVits 引擎不需要额外配置</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // 添加相关的 CSS 样式
+    const style = document.createElement('style');
+    style.textContent = `
+        .voice-engine-tabs {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .tab-buttons {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .tab-btn.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .tab-content {
+            padding: 15px;
+        }
+
+        .tab-pane {
+            display: none;
+        }
+
+        .tab-pane.active {
+            display: block;
+        }
+
+        .note {
+            color: var(--text-secondary);
+            font-style: italic;
+            margin: 0;
+        }
+    `;
+    document.head.appendChild(style);
+
+    // 修改初始化函数
+    function initVoiceEngineSelection(modal, initialVoiceEngine = null) {
+        const tabButtons = modal.querySelectorAll('.tab-btn');
+        const tabPanes = modal.querySelectorAll('.tab-pane');
+        const engineNameSelect = modal.querySelector('#engine-name');
+        const voiceSelection = modal.querySelector('.voice-selection');
+        const voiceNameSelect = modal.querySelector('#voice-name');
+        const previewVoiceBtn = modal.querySelector('.preview-voice-btn');
+
+        // Tab 切换功能
+        tabButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                tabButtons.forEach(b => b.classList.remove('active'));
+                tabPanes.forEach(p => p.classList.remove('active'));
+                btn.classList.add('active');
+                modal.querySelector(`#${btn.dataset.tab}-tab`).classList.add('active');
+            });
+        });
+
+        // 如果有初始值，设置初始选项
+        if (initialVoiceEngine) {
+            const tabBtn = modal.querySelector(`.tab-btn[data-tab="${
+                initialVoiceEngine.TTS_type === 'GPT_SoVits' ? 'gpt-sovits' : 'realtimetts'
+            }"]`);
+            if (tabBtn) {
+                tabBtn.click();
+            }
+        }
+
+        // 加载 RealtimeTTS 引擎列表
+        async function loadRealtimeTTSEngines() {
+            const availableEngines = await loadEngineList('RealtimeTTS');
+            engineNameSelect.innerHTML = availableEngines.map(engine => `
+                <option value="${engine.engine_name}" 
+                    ${initialVoiceEngine && initialVoiceEngine.engine_name === engine.engine_name ? 'selected' : ''}>
+                    ${engine.engine_name}
+                </option>
+            `).join('');
+
+            if (availableEngines.length > 0) {
+                engineNameSelect.dispatchEvent(new Event('change'));
+            }
+        }
+
+        // 初始加载引擎列表
+        loadRealtimeTTSEngines();
+
+        // 引擎切换事件
+        engineNameSelect.addEventListener('change', async () => {
+            const selectedEngine = TTS_config.find(engine => 
+                engine.engine_name === engineNameSelect.value
+            );
+
+            if (selectedEngine && selectedEngine.support_voice_selection) {
+                voiceSelection.style.display = 'block';
+                const voices = await loadVoiceList(selectedEngine.engine_name);
+                voiceNameSelect.innerHTML = voices.map(voice => `
+                    <option value="${voice}" 
+                        ${initialVoiceEngine && initialVoiceEngine.voice_name === voice ? 'selected' : ''}>
+                    ${voice}
+                </option>
+            `).join('');
+            } else {
+                voiceSelection.style.display = 'none';
+            }
+        });
+
+        // 试听按钮事件
+        previewVoiceBtn.addEventListener('click', async () => {
+            const selectedEngine = engineNameSelect.value;
+            const selectedVoice = voiceNameSelect.value;
+            if (!selectedVoice) return;
+            
+            await previewVoice(selectedEngine, selectedVoice);
+        });
+
+        return {
+            getVoiceEngineConfig: () => {
+                const activeTab = modal.querySelector('.tab-btn.active').dataset.tab;
+                
+                if (activeTab === 'gpt-sovits') {
+                    return {
+                        TTS_type: 'GPT_SoVits',
+                        engine_name: 'GPT_SoVits'
+                    };
+                }
+
+                const selectedEngine = TTS_config.find(engine => 
+                    engine.engine_name === engineNameSelect.value
+                );
+
+                const config = {
+                    TTS_type: 'RealtimeTTS',
+                    engine_name: engineNameSelect.value
+                };
+
+                if (selectedEngine.support_voice_selection) {
+                    const voiceName = voiceNameSelect.value;
+                    if (voiceName) {
+                        config.voice_name = voiceName;
+                    }
+                }
+
+                return config;
+            }
+        };
+    }
+
     // 添加联系人对话框
     function showAddContactDialog() {
         // 检查是否已存在对话框
@@ -2826,13 +3582,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                         <label for="contact-prompt">提示词:</label>
                         <textarea id="contact-prompt" class="form-textarea" rows="3"></textarea>
                     </div>
-                    <div class="form-group">
-                        <label for="voice-engine">语音引擎:</label>
-                        <select id="voice-engine" class="form-select">
-                            <option value="RealtimeTTS">RealtimeTTS</option>
-                            <option value="GPT_SoVits">GPT_SoVits</option>
-                        </select>
-                    </div>
+                    ${createVoiceEngineSelectionHTML()}
                     <div class="form-group">
                         <label for="voice-speed">语速:</label>
                         <div class="speed-control">
@@ -2886,17 +3636,24 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         // 提交按钮事件
         const submitBtn = modal.querySelector('.submit-btn');
+        const voiceEngineControl = initVoiceEngineSelection(modal);
+
         submitBtn.addEventListener('click', () => {
             const name = modal.querySelector('#contact-name').value.trim();
             const targetLang = modal.querySelector('#target-language').value;
             const prompt = modal.querySelector('#contact-prompt').value.trim() || 
                 `你是一个${targetLang === 'en' ? '英语' : targetLang === 'ja' ? '日语' : '语言'}学习伙伴，帮助我学习${targetLang === 'en' ? '英语' : targetLang === 'ja' ? '日语' : targetLang}。`;
-            const voiceEngine = modal.querySelector('#voice-engine').value;
             const speed = parseFloat(modal.querySelector('#voice-speed').value);
             const icon = modal.querySelector('#contact-icon').value;
 
             if (!name) {
                 showGlobalToast('请输入联系人名称');
+                return;
+            }
+
+            const voiceEngine = voiceEngineControl.getVoiceEngineConfig();
+            if (!voiceEngine) {
+                showGlobalToast('请完成语音引擎配置');
                 return;
             }
 
@@ -3031,13 +3788,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                         <label for="contact-prompt">提示词:</label>
                         <textarea id="contact-prompt" class="form-textarea" rows="3">${contact.prompt}</textarea>
                     </div>
-                    <div class="form-group">
-                        <label for="voice-engine">语音引擎:</label>
-                        <select id="voice-engine" class="form-select">
-                            <option value="RealtimeTTS" ${contact.voice_engine === 'RealtimeTTS' ? 'selected' : ''}>RealtimeTTS</option>
-                            <option value="GPT_SoVits" ${contact.voice_engine === 'GPT_SoVits' ? 'selected' : ''}>GPT_SoVits</option>
-                        </select>
-                    </div>
+                    ${createVoiceEngineSelectionHTML()}
                     <div class="form-group">
                         <label for="voice-speed">语速:</label>
                         <div class="speed-control">
@@ -3091,16 +3842,23 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         // 提交按钮事件
         const submitBtn = modal.querySelector('.submit-btn');
+        const voiceEngineControl = initVoiceEngineSelection(modal, contact.voice_engine);
+
         submitBtn.addEventListener('click', () => {
             const name = modal.querySelector('#contact-name').value.trim();
             const targetLang = modal.querySelector('#target-language').value;
             const prompt = modal.querySelector('#contact-prompt').value.trim();
-            const voiceEngine = modal.querySelector('#voice-engine').value;
             const speed = parseFloat(modal.querySelector('#voice-speed').value);
             const icon = modal.querySelector('#contact-icon').value;
 
             if (!name) {
                 showGlobalToast('请输入联系人名称');
+                return;
+            }
+
+            const voiceEngine = voiceEngineControl.getVoiceEngineConfig();
+            if (!voiceEngine) {
+                showGlobalToast('请完成语音引擎配置');
                 return;
             }
 
@@ -3338,5 +4096,51 @@ document.addEventListener('DOMContentLoaded', async function() {
                 reader.readAsDataURL(file);
             }
         });
+    }
+
+
+    // 修改获取声音列表的请求
+    async function loadVoiceList(engineName) {
+        try {
+            const port = 8000; // 使用server.py的端口
+            const response = await fetch(`http://127.0.0.1:${port}/voices?engine=${engineName}`);
+            console.log(response);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return await response.json();
+        } catch (error) {
+            console.error('获取声音列表失败:', error);
+            showGlobalToast('获取声音列表失败');
+            return [];
+        }
+    }
+
+    // 修改试听功能的请求
+    async function previewVoice(engineName, voiceName, text = '这是一段测试语音') {
+        try {
+            const port = 8000; // 使用server.py的端口
+            const response = await fetch(`http://127.0.0.1:${port}/tts/preview`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    engine: engineName,
+                    voice: voiceName,
+                    text: text
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const audio = new Audio(URL.createObjectURL(await response.blob()));
+            await audio.play();
+        } catch (error) {
+            console.error('试听失败:', error);
+            showGlobalToast('试听失败');
+        }
     }
 });

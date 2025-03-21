@@ -237,10 +237,10 @@
     width: fit-content;
     min-width: 100%;
     font-family: var(--font-family);
-    line-height: 1.2;
+    line-height: 1.4;
     color: var(--text-color);
     overflow-wrap: break-word;
-    padding: 8px 8px 0px;
+    padding: 8px 8px 4px;
     border-radius: 8px 8px 0 0;
     word-wrap: break-word;
     word-break: break-word;
@@ -786,4 +786,138 @@
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+/* STT 加载按钮样式 */
+.stt-load-btn {
+    position: relative;
+    background: none;
+    border: none;
+    color: var(--secondary-text-color);
+    padding: 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.stt-load-btn:hover {
+    background: var(--hover-bg);
+    color: var(--primary-color);
+}
+
+.stt-load-btn.loading {
+    pointer-events: none;
+}
+
+.stt-load-btn.loading i {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* 已加载状态 */
+.stt-load-btn.loaded {
+    color: var(--primary-color);
+}
+
+/* 翻译部分样式 */
+.translation-section {
+    margin-top: 4px;
+    border-top: 1px dashed var(--border-color);
+    padding-top: 4px;
+}
+
+.translation-section summary {
+    color: var(--secondary-text-color);
+    cursor: pointer;
+    user-select: none;
+    padding: 2px 0;
+}
+
+.translation-section summary:hover {
+    color: var(--primary-color);
+}
+
+.translation-content {
+    margin: 0;
+    padding: 0;
+    background: var(--surface-color);
+    border-radius: 4px;
+    font-size: 0.95em;
+}
+
+.translation-content p {
+    margin: 4px 0;
+}
+
+/* 确保翻译部分的 Markdown 内容也使用紧凑布局 */
+.translation-content .markdown-body p {
+    margin: 4px 0;
+}
+
+.translation-content .markdown-body {
+    padding: 0;
+}
+
+/* 确保翻译部分在听力模式下也被遮罩 */
+.content-masked .translation-section {
+    filter: blur(5px);
+    user-select: none;
+}
+
+/* 错误消息样式 */
+.error-message {
+    color: #f44336;
+    padding: 8px;
+    border-radius: 4px;
+    background: rgba(244, 67, 54, 0.1);
+    margin-top: 8px;
+}
+
+/* 分析部分样式 */
+.analysis-section {
+    margin-top: 4px;
+    border-top: 1px dashed var(--border-color);
+    padding-top: 4px;
+}
+
+.analysis-section summary {
+    color: var(--secondary-text-color);
+    cursor: pointer;
+    user-select: none;
+    padding: 2px 0;
+}
+
+.analysis-section summary:hover {
+    color: var(--primary-color);
+}
+
+.analysis-content {
+    margin: 0;
+    padding: 0;
+    background: var(--surface-color);
+    border-radius: 4px;
+    font-size: 0.95em;
+}
+
+.analysis-content p {
+    margin: 4px 0;
+}
+
+/* 确保分析部分的 Markdown 内容也使用紧凑布局 */
+.analysis-content .markdown-body p {
+    margin: 4px 0;
+}
+
+.analysis-content .markdown-body {
+    padding: 0;
+}
+
+/* 确保分析部分在听力模式下也被遮罩 */
+.content-masked .analysis-section {
+    filter: blur(5px);
+    user-select: none;
 }

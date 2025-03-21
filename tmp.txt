@@ -55,3 +55,5 @@ $$x = {-b \\pm \\sqrt{b^2-4ac} \\over 2a}$$
   嗯，是可以书写文本的
 </details>
 `;
+
+获取当前聊天框的联系人，如果是default，就弹出请选择联系人，如果是有voice_engine的联系人就将AImessage的文本转语音播放，实现朗读功能

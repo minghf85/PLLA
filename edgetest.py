@@ -77,6 +77,7 @@ if __name__ == "__main__":
         lang_filters = [f for f in filters if f != gender_filter]
         
         all_voices = engine.get_voices()
+        print(all_voices)
         print("Available voices:")
         displayed_count = 0
         
