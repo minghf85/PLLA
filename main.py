@@ -141,37 +141,6 @@ def translation():
         print(f"Error in translation endpoint: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# # TTS
-# @app.route('/api/tts', methods=['POST'])
-# def tts():
-#     try:
-#         data = request.json
-#         text = data.get('text', '')
-#         success = config.tts(text)
-#         return jsonify({'success': success})
-#     except Exception as e:
-#         return jsonify({'success': False, 'error': str(e)}), 500
-#STT
-# @app.route('/api/load_stt_model', methods=['POST'])#网页端传过来当前联系人的target_language(如果当前联系人为默认，则提示请选择联系人),加载模型,加载好之后返回加载好的信号，网页端图标改变给出提示，
-# def load_stt_model():
-#     try:
-#         data = request.json
-#         text = data.get('text', '')
-#         success = config.stt(text)
-#         return jsonify({'success': success})
-#     except Exception as e:
-#         return jsonify({'success': False, 'error': str(e)}), 500
-
-# @app.route('/api/stt',methods=['POST'])#网页端按住录音按钮之后就开始实时转录，并将转录结果实时显示到输入框
-# def stt():
-#     try:
-#         data = request.json
-#         text = data.get('text', '')
-#         success = config.stt(text)
-#         return jsonify({'success': success})
-#     except Exception as e:
-#         return jsonify({'success': False, 'error': str(e)}), 500
-
 
 @app.route('/api/avatars', methods=['GET'])
 def get_avatars():
@@ -300,7 +269,7 @@ def get_sessions():
 
 @app.route('/api/session/<int:session_id>', methods=['GET'])
 def get_session(session_id):
-    """获取指定会话的所有消息"""
+    """获取会话详情及消息"""
     try:
         conn = sqlite3.connect("plla_user.db")
         cursor = conn.cursor()
@@ -308,43 +277,52 @@ def get_session(session_id):
         # 获取会话信息
         cursor.execute("""
             SELECT session_name, contact_name, scenario_name
-            FROM chat_sessions
+            FROM chat_sessions 
             WHERE session_id = ?
         """, (session_id,))
+        session_data = cursor.fetchone()
         
-        session_info = cursor.fetchone()
-        if not session_info:
-            return jsonify({'error': 'Session not found'}), 404
+        if not session_data:
+            return jsonify({
+                'success': False,
+                'error': '会话不存在'
+            }), 404
             
         # 获取会话消息
         cursor.execute("""
-            SELECT content, analysis, translation, is_user, timestamp
-            FROM messages
+            SELECT message_id, content, analysis, translation, is_user
+            FROM messages 
             WHERE session_id = ?
             ORDER BY timestamp ASC
         """, (session_id,))
-        
         messages = cursor.fetchall()
+        
         conn.close()
         
+        # 格式化返回数据
         return jsonify({
+            'success': True,
             'session': {
                 'id': session_id,
-                'name': session_info[0],
-                'contact': session_info[1],
-                'scenario': session_info[2]
+                'name': session_data[0],
+                'contact': session_data[1],
+                'scenario': session_data[2]
             },
             'messages': [{
-                'content': msg[0],
-                'analysis': msg[1],
-                'translation': msg[2],
-                'is_user': bool(msg[3]),
-                'timestamp': msg[4]
+                'id': msg[0],
+                'content': msg[1],
+                'analysis': msg[2],
+                'translation': msg[3],
+                'is_user': bool(msg[4])
             } for msg in messages]
         })
+        
     except Exception as e:
         print(f"Error getting session: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 @app.route('/api/session', methods=['POST'])
 def save_session():
@@ -491,7 +469,7 @@ def create_session():
 
 @app.route('/api/session/message', methods=['POST'])
 def save_message():
-    """保存会话消息"""
+    """保存会话消息并返回消息ID"""
     try:
         data = request.json
         session_id = data.get('session_id')
@@ -515,6 +493,9 @@ def save_message():
             ) VALUES (?, ?, ?, ?, ?, datetime('now'))
         """, (session_id, content, analysis, translation, is_user))
         
+        # 获取新插入消息的ID
+        message_id = cursor.lastrowid
+        
         # 更新会话最后消息时间
         cursor.execute("""
             UPDATE chat_sessions
@@ -525,9 +506,54 @@ def save_message():
         conn.commit()
         conn.close()
         
-        return jsonify({'success': True})
+        return jsonify({
+            'success': True,
+            'message_id': message_id
+        })
     except Exception as e:
         print(f"Error saving message: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/message/update', methods=['POST'])
+def update_message():
+    """更新消息的分析或翻译内容"""
+    try:
+        data = request.json
+        message_id = data.get('message_id')
+        analysis = data.get('analysis')
+        translation = data.get('translation')
+        
+        conn = sqlite3.connect("plla_user.db")
+        cursor = conn.cursor()
+        
+        # 构建更新语句
+        update_fields = []
+        params = []
+        if analysis is not None:
+            update_fields.append("analysis = ?")
+            params.append(analysis)
+        if translation is not None:
+            update_fields.append("translation = ?")
+            params.append(translation)
+            
+        if update_fields:
+            query = f"""
+                UPDATE messages 
+                SET {', '.join(update_fields)}
+                WHERE message_id = ?
+            """
+            params.append(message_id)
+            cursor.execute(query, params)
+            conn.commit()
+        
+        conn.close()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        print(f"Error updating message: {str(e)}")
         return jsonify({
             'success': False,
             'error': str(e)
