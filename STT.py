@@ -4,55 +4,9 @@ import threading
 from queue import Queue
 import json
 
-recorder_config = {
-        'spinner': False,
-        'model': 'large-v3',
-        #'realtime_model_type': 'medium.en',
-        'realtime_model_type': 'tiny',
-        'language': 'en',
-        'silero_sensitivity': 0.2,
-        'webrtc_sensitivity': 3,
-        'post_speech_silence_duration': 0.4,
-        'min_length_of_recording': 0.3,
-        'min_gap_between_recordings': 0.5,
-        'enable_realtime_transcription': True,
-        'realtime_processing_pause': 0.05,
-        'silero_deactivity_detection': True,
-        'early_transcription_on_silence': 0,
-        'beam_size': 5,
-        'beam_size_realtime': 1,
-        'batch_size': 4,
-        'realtime_batch_size': 4,
-        'no_log_file': True,
-        'initial_prompt_realtime': (
-            "End incomplete sentences with ellipses.\n"
-            "Examples:\n"
-            "Complete: The sky is blue.\n"
-            "Incomplete: When the sky...\n"
-            "Complete: She walked home.\n"
-            "Incomplete: Because he...\n"
-        )
-    }
-
-stt_config = {
-    'spinner': False,
-    'model': 'large-v2',
-    'realtime_model_type': 'tiny',
-    'language': 'ja',
-    'model': "large-v3",
-    'device': "cuda",
-    "silero_sensitivity":0.2,
-    "webrtc_sensitivity":3,
-    "post_speech_silence_duration":0.4, 
-    "min_length_of_recording":0.3, 
-    "min_gap_between_recordings":1, 
-    "enable_realtime_transcription" : True,
-    "realtime_processing_pause" : 0.05, 
-    "realtime_model_type" : "tiny"
-}
 
 class WebSTTThread:
-    def __init__(self, config=stt_config):
+    def __init__(self, config):
         """
         初始化 WebSTTThread
         :param config: STT 配置
