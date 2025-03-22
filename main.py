@@ -77,19 +77,23 @@ def chat():
         print(f"Error in chat endpoint: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/aimsg_analysis', methods=['POST'])
-def aimsg_analysis():
+@app.route('/api/analysis', methods=['POST'])
+def analysis():
     try:
         data = request.json
+        is_user = data.get('is_user', False)
         sentence = data.get('sentence', '')
         mother_language = data.get('mother_language', '')
         target_language = data.get('target_language', '')
 
         def generate():
             try:
-                for token in agent.gen_aimsg_analysis(mother_language, target_language, sentence):
-                    print(token)
-                    yield token
+                if is_user:
+                    for token in agent.gen_usermsg_analysis(mother_language, target_language, sentence):
+                        yield token
+                else:
+                    for token in agent.gen_aimsg_analysis(mother_language, target_language, sentence):
+                        yield token
             except Exception as e:
                 print(f"Error in analysis generation: {str(e)}")
                 yield f"分析失败: {str(e)}"
@@ -107,35 +111,6 @@ def aimsg_analysis():
         print(f"Error in analysis endpoint: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/user_analysis', methods=['POST'])
-def usermsg_analysis():
-    try:
-        data = request.json
-        sentence = data.get('sentence', '')
-        mother_language = data.get('mother_language', '')
-        target_language = data.get('target_language', '')
-        
-        def generate():
-            try:
-                for token in agent.gen_usermsg_analysis(mother_language, target_language, sentence):
-                    print(token)
-                    yield token
-            except Exception as e:
-                print(f"Error in analysis generation: {str(e)}")
-                yield f"分析失败: {str(e)}"
-        
-        return Response(
-            stream_with_context(generate()),
-            mimetype='text/event-stream',
-            headers={
-                'Cache-Control': 'no-cache',
-                'X-Accel-Buffering': 'no'
-            }
-        )
-        
-    except Exception as e:
-        print(f"Error in analysis endpoint: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/translation', methods=['POST'])
 def translation():
@@ -148,7 +123,6 @@ def translation():
         def generate():
             try:
                 for token in agent.gen_translation(mother_language, target_language, sentence):
-                    print(token)
                     yield token
             except Exception as e:
                 print(f"Error in translation generation: {str(e)}")
@@ -422,5 +396,142 @@ def sql():
     except Exception as e:
         print(f"Error executing query: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/session/rename', methods=['POST'])
+def rename_session():
+    """重命名会话"""
+    try:
+        data = request.json
+        session_id = data.get('session_id')
+        new_name = data.get('new_name')
+        
+        conn = sqlite3.connect("plla_user.db")
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            UPDATE chat_sessions 
+            SET session_name = ? 
+            WHERE session_id = ?
+        """, (new_name, session_id))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        print(f"Error renaming session: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/session/delete', methods=['POST'])
+def delete_session():
+    """删除会话及其所有消息"""
+    try:
+        data = request.json
+        session_id = data.get('session_id')
+        
+        conn = sqlite3.connect("plla_user.db")
+        cursor = conn.cursor()
+        
+        # 删除会话的所有消息
+        cursor.execute("DELETE FROM messages WHERE session_id = ?", (session_id,))
+        # 删除会话
+        cursor.execute("DELETE FROM chat_sessions WHERE session_id = ?", (session_id,))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        print(f"Error deleting session: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/session/create', methods=['POST'])
+def create_session():
+    """创建新会话"""
+    try:
+        data = request.json
+        session_name = data.get('session_name')
+        contact_name = data.get('contact_name')
+        scenario_name = data.get('scenario_name')
+        
+        conn = sqlite3.connect("plla_user.db")
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            INSERT INTO chat_sessions (
+                session_name, 
+                contact_name, 
+                scenario_name, 
+                start_time, 
+                last_message_time
+            ) VALUES (?, ?, ?, datetime('now'), datetime('now'))
+        """, (session_name, contact_name, scenario_name))
+        
+        session_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'session_id': session_id,
+            'session_name': session_name
+        })
+    except Exception as e:
+        print(f"Error creating session: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/session/message', methods=['POST'])
+def save_message():
+    """保存会话消息"""
+    try:
+        data = request.json
+        session_id = data.get('session_id')
+        content = data.get('content')
+        analysis = data.get('analysis')
+        translation = data.get('translation')
+        is_user = data.get('is_user')
+        
+        conn = sqlite3.connect("plla_user.db")
+        cursor = conn.cursor()
+        
+        # 插入新消息
+        cursor.execute("""
+            INSERT INTO messages (
+                session_id, 
+                content, 
+                analysis, 
+                translation, 
+                is_user,
+                timestamp
+            ) VALUES (?, ?, ?, ?, ?, datetime('now'))
+        """, (session_id, content, analysis, translation, is_user))
+        
+        # 更新会话最后消息时间
+        cursor.execute("""
+            UPDATE chat_sessions
+            SET last_message_time = datetime('now')
+            WHERE session_id = ?
+        """, (session_id,))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        print(f"Error saving message: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 if __name__ == '__main__':
     app.run(debug=True)

@@ -1,5 +1,5 @@
-// 添加 ChatHistory 类的定义 (放在文件开头的类定义区域)
-class ChatHistory {
+// 添加 SessionHistory 类的定义 (放在文件开头的类定义区域)
+class SessionHistory {
     constructor(id, title, date) {
         this.id = id;
         this.title = title;
@@ -1252,16 +1252,138 @@ document.addEventListener('DOMContentLoaded', async function() {
     class ChatTile extends ContainerTile {
         constructor(options = {}) {
             super('chat', options);
-            this.current_session_id = '1';
-            this.current_session_name = '初次对话';
-            this.current_historys = [];
+            this.current_session_id = null;
+            this.current_session_name = '';
             this.current_contact = 'default';
             this.current_scenario = 'default';
             this.current_prompt = "default";
             this.target_language = 'en';
             this.mother_language = mother_language;
             ChatTile.instance = this;
-            this.chatHistory = [];  // 初始化为空数组
+            this.chatHistory = [];  // 当前对话历史
+            this.sessionHistory = [];  // 会话列表
+        }
+
+        // 移除createNewSession方法，改为在发送第一条消息时创建会话
+        async createSessionIfNeeded() {
+            if (this.current_session_id) return;  // 已有会话则直接返回
+            
+            try {
+                const response = await fetch('/api/session/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        contact_name: this.current_contact,
+                        scenario_name: this.current_scenario,
+                        session_name: `${this.current_contact}-${this.current_scenario}-${new Date().toLocaleString()}`
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('创建会话失败');
+                }
+
+                const data = await response.json();
+                if (data.success) {
+                    this.current_session_id = data.session_id;
+                    this.current_session_name = data.session_name;
+                } else {
+                    throw new Error(data.error || '创建会话失败');
+                }
+            } catch (error) {
+                console.error('创建会话失败:', error);
+                throw error;  // 向上传递错误
+            }
+        }
+
+        // 修改发送消息的方法
+        async handleSendMessage(message) {
+            const messagesContainer = this.element.querySelector('.chat-messages');
+            
+            try {
+                if (!this.current_contact || this.current_contact === 'default') {
+                    showGlobalToast('请先选择联系人');
+                    return;
+                }
+
+                // 创建并显示用户消息
+                const userMsg = new UserMessage(message);
+                messagesContainer.appendChild(userMsg.element);
+                
+                // 如果是第一条消息，创建新会话
+                await this.createSessionIfNeeded();
+                
+                // 保存用户消息到数据库
+                await saveMessage({
+                    session_id: this.current_session_id,
+                    content: message,
+                    is_user: true
+                });
+
+                // 添加到聊天历史
+                this.chatHistory.push({
+                    role: "user",
+                    content: message
+                });
+
+                // 创建AI消息占位
+                const aiMsg = new AIMessage('', {
+                    isListeningMode: Global_isListeningMode
+                });
+                messagesContainer.appendChild(aiMsg.element);
+
+                // 发送请求到后端
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        prompt: this.current_prompt,
+                        message: message,
+                        history: this.chatHistory
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('请求失败');
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let aiResponse = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const token = decoder.decode(value, { stream: true });
+                    aiResponse += token;
+                    aiMsg.streamContent(aiResponse);
+                }
+
+                // 保存AI响应到数据库
+                await saveMessage({
+                    session_id: this.current_session_id,
+                    content: aiResponse,
+                    is_user: false
+                });
+
+                // 添加到聊天历史
+                this.chatHistory.push({
+                    role: "assistant",
+                    content: aiResponse
+                });
+
+                // 更新会话列表
+                await Load_SessionHistorys();
+
+            } catch (error) {
+                console.error('发送消息失败:', error);
+                showGlobalToast('发送消息失败: ' + error.message);
+            }
         }
 
         updateCurrentContact(contact) {
@@ -1438,10 +1560,10 @@ document.addEventListener('DOMContentLoaded', async function() {
 
             // 加载历史记录
             try {
-                this.chatHistory = await Load_ChatHistorys();
+                this.sessionHistory = await Load_SessionHistorys();
             } catch (error) {
                 console.error('加载历史记录失败:', error);
-                this.chatHistory = [];
+                this.sessionHistory = [];
             }
 
             // 渲染历史消息列表
@@ -1449,8 +1571,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                 const historyList = tile.querySelector('.history-list');
                 historyList.innerHTML = '';
                 
-                if (Array.isArray(this.chatHistory)) {
-                    this.chatHistory.forEach(history => {
+                if (Array.isArray(this.sessionHistory)) {
+                    this.sessionHistory.forEach(history => {
                         const historyItem = document.createElement('div');
                         historyItem.className = 'history-item';
                         historyItem.innerHTML = `
@@ -1469,31 +1591,82 @@ document.addEventListener('DOMContentLoaded', async function() {
                         `;
 
                         // 点击加载对话
-                        historyItem.addEventListener('click', (e) => {
+                        historyItem.addEventListener('click', async (e) => {
                             if (!e.target.closest('.history-item-actions')) {
                                 console.log('加载对话:', history.id);
+                                await Load_Session(history.id);
                                 historyMenu.classList.remove('active');
                                 historyBtn.classList.remove('active');
                             }
                         });
 
                         // 重命名按钮事件
-                        historyItem.querySelector('.rename-btn').addEventListener('click', (e) => {
+                        historyItem.querySelector('.rename-btn').addEventListener('click', async (e) => {
                             e.stopPropagation();
                             const newTitle = prompt('请输入新的标题', history.title);
                             if (newTitle && newTitle.trim()) {
-                                history.rename(newTitle.trim());
-                                renderHistoryList();
+                                try {
+                                    const response = await fetch('/api/session/rename', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                        },
+                                        body: JSON.stringify({
+                                            session_id: history.id,
+                                            new_name: newTitle.trim()
+                                        })
+                                    });
+
+                                    if (!response.ok) {
+                                        throw new Error('重命名失败');
+                                    }
+
+                                    const data = await response.json();
+                                    if (data.success) {
+                                        history.title = newTitle.trim();
+                                        renderHistoryList();
+                                        showGlobalToast('重命名成功');
+                                    } else {
+                                        throw new Error(data.error || '重命名失败');
+                                    }
+                                } catch (error) {
+                                    console.error('重命名失败:', error);
+                                    showGlobalToast('重命名失败: ' + error.message);
+                                }
                             }
                         });
 
                         // 删除按钮事件
-                        historyItem.querySelector('.delete-btn').addEventListener('click', (e) => {
+                        historyItem.querySelector('.delete-btn').addEventListener('click', async (e) => {
                             e.stopPropagation();
                             if (confirm('确定要删除这条对话记录吗？')) {
-                                history.delete();
-                                this.chatHistory.splice(this.chatHistory.indexOf(history), 1);
-                                renderHistoryList();
+                                try {
+                                    const response = await fetch('/api/session/delete', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                        },
+                                        body: JSON.stringify({
+                                            session_id: history.id
+                                        })
+                                    });
+
+                                    if (!response.ok) {
+                                        throw new Error('删除失败');
+                                    }
+
+                                    const data = await response.json();
+                                    if (data.success) {
+                                        this.sessionHistory = this.sessionHistory.filter(h => h.id !== history.id);
+                                        renderHistoryList();
+                                        showGlobalToast('删除成功');
+                                    } else {
+                                        throw new Error(data.error || '删除失败');
+                                    }
+                                } catch (error) {
+                                    console.error('删除失败:', error);
+                                    showGlobalToast('删除失败: ' + error.message);
+                                }
                             }
                         });
 
@@ -1531,10 +1704,26 @@ document.addEventListener('DOMContentLoaded', async function() {
                 });
             });
 
-            // 新建对话按钮事件
+            // 修改新建对话按钮事件
             newChatBtn.addEventListener('click', () => {
-                console.log('新建对话');
-                // TODO: 清空当前对话，准备新对话
+                if (this.current_contact === 'default') {
+                    console.log('请先选择联系人');
+                    showGlobalToast('请先选择联系人');
+                    return;
+                }
+                
+                // 清空当前会话状态
+                this.current_session_id = null;
+                this.current_session_name = '';
+                this.chatHistory = [];
+                
+                // 清空消息容器
+                const messagesContainer = this.element.querySelector('.chat-messages');
+                if (messagesContainer) {
+                    messagesContainer.innerHTML = '';
+                }
+                
+                showGlobalToast('已准备新对话');
             });
 
             // 听力模式切换
@@ -1610,11 +1799,22 @@ document.addEventListener('DOMContentLoaded', async function() {
             // 修改发送消息的函数
             const sendMessage = async () => {
                 const message = input.value.trim();
-                this.content = message;
+                
+                if (!this.current_session_id) {
+                    await this.createSessionIfNeeded();
+                }
+
                 if (message) {
                     // 创建用户消息
                     const userMsg = new UserMessage(message);
                     messagesContainer.appendChild(userMsg.element);
+                    
+                    // 保存用户消息
+                    await saveMessage({
+                        session_id: this.current_session_id,
+                        content: message,
+                        is_user: true
+                    });
                     
                     // 滚动到最新消息
                     scrollToLatest();
@@ -1655,11 +1855,21 @@ document.addEventListener('DOMContentLoaded', async function() {
                             console.log(token);
                             await aiMsg.streamContent(token);
                         }
-
+                        // 保存AI消息
+                        await saveMessage({
+                            session_id: this.current_session_id,
+                            content: aiMsg.content,
+                            is_user: false
+                        });
                         scrollToLatest();
                         
                     } catch (error) {
                         console.error('发送消息失败:', error);
+                        await saveMessage({
+                            session_id: this.current_session_id,
+                            content: '抱歉，发生了错误，请稍后重试。',
+                            is_user: false
+                        });
                         aiMsg.streamContent('抱歉，发生了错误，请稍后重试。');
                     }
                 }
@@ -1801,6 +2011,93 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
             return true;
         }
+
+        // 添加消息到历史记录
+        addMessageToHistory(content, isUser) {
+            this.chatHistory.push({
+                role: isUser ? "user" : "assistant",
+                content: content
+            });
+        }
+
+        // 清空当前会话历史
+        clearChatHistory() {
+            this.chatHistory = [];
+        }
+
+        // 修改发送消息部分
+        async sendMessage(message) {
+            try {
+                // 添加用户消息到历史记录
+                this.addMessageToHistory(message, true);
+
+                // 发送请求到后端
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        prompt: this.current_prompt,
+                        message: message,
+                        history: this.chatHistory
+                    })
+                });
+
+                // 处理响应...
+                const aiResponse = await response.text();
+                // 添加AI响应到历史记录
+                this.addMessageToHistory(aiResponse, false);
+
+            } catch (error) {
+                console.error('发送消息失败:', error);
+                showGlobalToast('发送消息失败: ' + error.message);
+            }
+        }
+
+        // 修改加载会话方法
+        async loadSession(sessionId) {
+            try {
+                const response = await fetch(`/api/session/load/${sessionId}`);
+                if (!response.ok) {
+                    throw new Error('加载会话失败');
+                }
+
+                const data = await response.json();
+                if (data.success) {
+                    this.current_session_id = sessionId;
+                    this.current_session_name = data.session_name;
+                    // 转换消息格式为chatHistory格式
+                    this.chatHistory = data.messages.map(msg => ({
+                        role: msg.is_user ? "user" : "assistant",
+                        content: msg.content
+                    }));
+                    
+                    // 更新UI显示
+                    this.renderMessages();
+                } else {
+                    throw new Error(data.error || '加载会话失败');
+                }
+            } catch (error) {
+                console.error('加载会话失败:', error);
+                showGlobalToast('加载会话失败: ' + error.message);
+            }
+        }
+
+        // 渲染消息列表
+        renderMessages() {
+            const messagesContainer = this.element.querySelector('.chat-messages');
+            messagesContainer.innerHTML = '';
+            
+            this.sessionHistory.forEach(msg => {
+                const messageElement = msg.role === "user" 
+                    ? new UserMessage(msg.content)
+                    : new AIMessage(msg.content, {
+                        isListeningMode: false,
+                    });
+                messagesContainer.appendChild(messageElement.element);
+            });
+        }
     }
 
     async function Load_Session(session_id) {
@@ -1867,7 +2164,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
-    async function Load_ChatHistorys() {
+    async function Load_SessionHistorys() {
         try {
             const response = await fetch('/api/sessions');
             if (!response.ok) {
@@ -1877,7 +2174,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             const sessions = await response.json();
             console.log(sessions);
             return sessions.map(session => 
-                new ChatHistory(
+                new SessionHistory(
                     session.id,
                     session.name,
                     session.time
@@ -1890,31 +2187,34 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
-    // 添加保存消息的函数
-    async function saveMessage(message, isUser = true) {
+    // 修改保存消息的函数
+    async function saveMessage(messageData) {
         try {
-            const response = await fetch('/api/session', {
+            const response = await fetch('/api/session/message', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    session_id: ChatTile.instance.current_session_id,
-                    content: message.content,
-                    analysis: message.analysis,
-                    translation: message.translation,
-                    is_user: isUser
+                    session_id: messageData.session_id,
+                    content: messageData.content,
+                    analysis: messageData.analysis || '',
+                    translation: messageData.translation || '',
+                    is_user: messageData.is_user
                 })
             });
-            
+
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                throw new Error('保存消息失败');
             }
-            
-            return await response.json();
+
+            const data = await response.json();
+            if (!data.success) {
+                throw new Error(data.error || '保存消息失败');
+            }
         } catch (error) {
             console.error('保存消息失败:', error);
-            showGlobalToast('保存消息失败');
+            showGlobalToast('保存消息失败: ' + error.message);
         }
     }
     // 修改 TileManager 类
@@ -2616,19 +2916,228 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // 基础消息框类
     class MessageBox {
-        constructor(content, options = {}) {
+        constructor(content, is_user, options = {}) {
             this.content = content;
+            this.is_user = is_user;
+            this.analysis = "";
+            this.translation = "";
+            this.message_id = null;  // 初始化消息ID
             this.options = {
                 buttons: [
                     {
                         icon: 'fa-copy',
                         title: '复制',
                         onClick: () => this.copyContent()
+                    },
+                    {
+                        icon: 'fa-comment-dots',
+                        title: '分析',
+                        onClick: () => this.analyze()
+                    },
+                    {
+                        icon: 'fa-language',
+                        title: '翻译',
+                        onClick: () => this.translate()
                     }
                 ],
                 ...options
             };
             this.element = this.createElement();
+        }
+
+        // 添加更新消息ID的方法
+        setMessageId(id) {
+            this.message_id = id;
+        }
+
+        // 修改保存消息的函数
+        async saveMessage() {
+            try {
+                const response = await fetch('/api/session/message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        session_id: ChatTile.instance.current_session_id,
+                        content: this.content,
+                        analysis: this.analysis,
+                        translation: this.translation,
+                        is_user: this.is_user
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('保存消息失败');
+                }
+
+                const data = await response.json();
+                if (data.success) {
+                    this.message_id = data.message_id;
+                } else {
+                    throw new Error(data.error || '保存消息失败');
+                }
+            } catch (error) {
+                console.error('保存消息失败:', error);
+                showGlobalToast('保存消息失败: ' + error.message);
+            }
+        }
+
+        // 修改分析方法
+        async analyze() {
+            const contentArea = this.element.querySelector('.message-content');
+            
+            if (contentArea.querySelector('.analysis-section')) {
+                showGlobalToast('已存在分析');
+                return;
+            }
+
+            const analysisHtml = `
+                <details class="analysis-section" open>
+                    <summary>分析</summary>
+                    <div class="analysis-content">正在分析...</div>
+                </details>
+            `;
+            
+            contentArea.innerHTML += analysisHtml;
+            const analysisContent = contentArea.querySelector('.analysis-content');
+            let analysisBuffer = '';
+
+            try {
+                const response = await fetch('/api/analysis', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        sentence: this.content,
+                        is_user: this.is_user,
+                        mother_language: ChatTile.instance.mother_language || 'zh',
+                        target_language: ChatTile.instance.target_language || 'en'
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('分析请求失败');
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const token = decoder.decode(value, { stream: true });
+                    if (token.includes('分析失败')) {
+                        throw new Error(token);
+                    }
+                    
+                    analysisBuffer += token;
+                    
+                    if (typeof marked !== 'undefined') {
+                        try {
+                            analysisContent.innerHTML = marked.parse(analysisBuffer);
+                            analysisContent.querySelectorAll('pre code').forEach((block) => {
+                                if (typeof hljs !== 'undefined') {
+                                    hljs.highlightElement(block);
+                                }
+                            });
+                        } catch (e) {
+                            analysisContent.textContent = analysisBuffer;
+                        }
+                    } else {
+                        analysisContent.textContent = analysisBuffer;
+                    }
+                }
+
+                // 保存分析结果
+                this.analysis = analysisBuffer;
+                await this.saveMessage();
+
+            } catch (error) {
+                console.error('分析失败:', error);
+                analysisContent.innerHTML = `<div class="error-message">分析失败: ${error.message}</div>`;
+                showGlobalToast('分析失败');
+            }
+        }
+
+        // 修改翻译方法
+        async translate() {
+            const contentArea = this.element.querySelector('.message-content');
+            
+            if (contentArea.querySelector('.translation-section')) {
+                showGlobalToast('已存在翻译');
+                return;
+            }
+
+            const translationHtml = `
+                <details class="translation-section" open>
+                    <summary>翻译</summary>
+                    <div class="translation-content">正在翻译...</div>
+                </details>
+            `;
+            
+            contentArea.innerHTML += translationHtml;
+            const translationContent = contentArea.querySelector('.translation-content');
+            let translationBuffer = '';
+
+            try {
+                const response = await fetch('/api/translation', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        sentence: this.content,
+                        target_language: mother_language,
+                        mother_language: ChatTile.instance.target_language || 'en'
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('翻译请求失败');
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const token = decoder.decode(value, { stream: true });
+                    if (token.includes('翻译失败')) {
+                        throw new Error(token);
+                    }
+                    
+                    translationBuffer += token;
+                    
+                    if (typeof marked !== 'undefined') {
+                        try {
+                            translationContent.innerHTML = marked.parse(translationBuffer);
+                            translationContent.querySelectorAll('pre code').forEach((block) => {
+                                if (typeof hljs !== 'undefined') {
+                                    hljs.highlightElement(block);
+                                }
+                            });
+                        } catch (e) {
+                            translationContent.textContent = translationBuffer;
+                        }
+                    } else {
+                        translationContent.textContent = translationBuffer;
+                    }
+                }
+
+                // 保存翻译结果
+                this.translation = translationBuffer;
+                await this.saveMessage();
+
+            } catch (error) {
+                console.error('翻译失败:', error);
+                translationContent.innerHTML = `<div class="error-message">翻译失败: ${error.message}</div>`;
+                showGlobalToast('翻译失败');
+            }
         }
 
         createElement() {
@@ -2774,7 +3283,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     // 修改 UserMessage 类
     class UserMessage extends MessageBox {
         constructor(content, options = {}) {
-            super(content, {
+            // 用户消息的按钮配置
+            const userOptions = {
                 ...options,
                 buttons: [
                     {
@@ -2793,183 +3303,34 @@ document.addEventListener('DOMContentLoaded', async function() {
                         onClick: () => this.translate()
                     }
                 ]
-            });
+            };
+
+            super(content, true, userOptions);  // true 表示是用户消息
             this.element.classList.add('user-message');
-        }
-
-        async analyze() {
-            const contentArea = this.element.querySelector('.message-content');
-            
-            // 检查是否已经有分析部分
-            if (contentArea.querySelector('.analysis-section')) {
-                this.showGlobalToast('已存在分析');
-                return;
-            }
-
-            // 创建分析部分的 HTML
-            const analysisHtml = `
-                <details class="analysis-section" open>
-                    <summary>分析</summary>
-                    <div class="analysis-content">正在分析...</div>
-                </details>
-            `;
-            
-            // 添加到现有内容后面
-            contentArea.innerHTML += analysisHtml;
-            
-            const analysisContent = contentArea.querySelector('.analysis-content');
-            let analysisBuffer = '';
-
-            try {
-                // 发送分析请求
-                const response = await fetch('/api/user_analysis', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        sentence: this.content,
-                        mother_language: ChatTile.instance.mother_language || 'zh',
-                        target_language: ChatTile.instance.target_language || 'en'
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                // 处理流式响应
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    
-                    const token = decoder.decode(value, { stream: true });
-                    if (token.includes('分析失败')) {
-                        throw new Error(token);
-                    }
-                    
-                    analysisBuffer += token;
-                    
-                    // 使用 marked 渲染 Markdown
-                    if (typeof marked !== 'undefined') {
-                        try {
-                            analysisContent.innerHTML = marked.parse(analysisBuffer);
-                            
-                            // 代码高亮
-                            analysisContent.querySelectorAll('pre code').forEach((block) => {
-                                if (typeof hljs !== 'undefined') {
-                                    hljs.highlightElement(block);
-                                }
-                            });
-                        } catch (e) {
-                            analysisContent.textContent = analysisBuffer;
-                        }
-                    } else {
-                        analysisContent.textContent = analysisBuffer;
-                    }
-                }
-            } catch (error) {
-                console.error('分析失败:', error);
-                analysisContent.innerHTML = `<div class="error-message">分析失败: ${error.message}</div>`;
-                this.showGlobalToast('分析失败');
-            }
-        }
-
-        async translate() {
-            const contentArea = this.element.querySelector('.message-content');
-            
-            // 检查是否已经有翻译部分
-            if (contentArea.querySelector('.translation-section')) {
-                this.showGlobalToast('已存在翻译');
-                return;
-            }
-
-            // 创建翻译部分的 HTML
-            const translationHtml = `
-                <details class="translation-section" open>
-                    <summary>翻译</summary>
-                    <div class="translation-content">正在翻译...</div>
-                </details>
-            `;
-            
-            // 添加到现有内容后面
-            contentArea.innerHTML += translationHtml;
-            
-            const translationContent = contentArea.querySelector('.translation-content');
-            let translationBuffer = '';
-
-            try {
-                // 发送翻译请求
-                const response = await fetch('/api/translation', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        sentence: this.content,
-                        target_language: ChatTile.instance.target_language || 'en',
-                        mother_language: ChatTile.instance.mother_language || 'zh'
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                // 处理流式响应
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    
-                    const token = decoder.decode(value, { stream: true });
-                    if (token.includes('翻译失败')) {
-                        throw new Error(token);
-                    }
-                    
-                    translationBuffer += token;
-                    
-                    // 使用 marked 渲染 Markdown
-                    if (typeof marked !== 'undefined') {
-                        try {
-                            translationContent.innerHTML = marked.parse(translationBuffer);
-                            
-                            // 代码高亮
-                            translationContent.querySelectorAll('pre code').forEach((block) => {
-                                if (typeof hljs !== 'undefined') {
-                                    hljs.highlightElement(block);
-                                }
-                            });
-                        } catch (e) {
-                            translationContent.textContent = translationBuffer;
-                        }
-                    } else {
-                        translationContent.textContent = translationBuffer;
-                    }
-                }
-            } catch (error) {
-                console.error('翻译失败:', error);
-                translationContent.innerHTML = `<div class="error-message">翻译失败: ${error.message}</div>`;
-                this.showGlobalToast('翻译失败');
-            }
         }
     }
 
     // 修改 AIMessage 类
     class AIMessage extends MessageBox {
         constructor(content, options = {}) {
-            super(content, {
+            // 合并基类按钮和AI消息特有的按钮
+            const aiOptions = {
                 ...options,
                 buttons: [
                     {
                         icon: 'fa-copy',
                         title: '复制',
                         onClick: () => this.copyContent()
+                    },
+                    {
+                        icon: 'fa-comment-dots',
+                        title: '分析',
+                        onClick: () => this.analyze()
+                    },
+                    {
+                        icon: 'fa-language',
+                        title: '翻译',
+                        onClick: () => this.translate()
                     },
                     {
                         icon: 'fa-volume-up',
@@ -2977,38 +3338,26 @@ document.addEventListener('DOMContentLoaded', async function() {
                         onClick: () => this.speak()
                     },
                     {
-                        icon: 'fa-comment-dots',
-                        title: '分析',
-                        onClick: () => this.analyze()
-                    },
-                    {
-                        icon: 'fa-language',
-                        title: '翻译',
-                        onClick: () => this.translate()
-                    },
-                    {
                         icon: 'fa-eye',
                         title: options.isListeningMode ? '显示' : '隐藏',
                         onClick: () => this.toggleVisibility()
                     },
                     {
-                        icon: 'fa-search',  // 使用一个更合适的 FontAwesome 图标
+                        icon: 'fa-search',
                         title: '帮忙回答',
                         onClick: () => this.helpAnswer()
                     }
                 ]
-            });
+            };
+
+            super(content, false, aiOptions);  // false 表示不是用户消息
             this.element.classList.add('ai-message');
             this.isListeningMode = options.isListeningMode;
-            this.messageHistory = options.messageHistory || [];
-            this.cachedContent = ''; // 初始化缓存内容
-            
+            this.cachedContent = '';
+
             // 初始化消息状态，跟随全局听力模式
-            if(this.isListeningMode){
+            if (this.isListeningMode) {
                 this.element.querySelector('.message-content').classList.add('content-masked');
-            }
-            else{
-                this.element.querySelector('.message-content').classList.remove('content-masked');
             }
         }
 
@@ -3042,167 +3391,6 @@ document.addEventListener('DOMContentLoaded', async function() {
             this.showGlobalToast('朗读功能开发中');
         }
 
-        async analyze() {
-            const contentArea = this.element.querySelector('.message-content');
-            
-            // 检查是否已经有分析部分
-            if (contentArea.querySelector('.analysis-section')) {
-                this.showGlobalToast('已存在分析');
-                return;
-            }
-
-            // 创建分析部分的 HTML
-            const analysisHtml = `
-                <details class="analysis-section" open>
-                    <summary>分析</summary>
-                    <div class="analysis-content">正在分析...</div>
-                </details>
-            `;
-            
-            // 添加到现有内容后面
-            contentArea.innerHTML += analysisHtml;
-            
-            const analysisContent = contentArea.querySelector('.analysis-content');
-            let analysisBuffer = '';
-
-            try {
-                // 发送分析请求
-                const response = await fetch('/api/aimsg_analysis', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        sentence: this.content,
-                        mother_language: ChatTile.instance.mother_language || 'zh',
-                        target_language: ChatTile.instance.target_language || 'en'
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                // 处理流式响应
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    
-                    const token = decoder.decode(value, { stream: true });
-                    if (token.includes('分析失败')) {
-                        throw new Error(token);
-                    }
-                    
-                    analysisBuffer += token;
-                    
-                    // 使用 marked 渲染 Markdown
-                    if (typeof marked !== 'undefined') {
-                        try {
-                            analysisContent.innerHTML = marked.parse(analysisBuffer);
-                            
-                            // 代码高亮
-                            analysisContent.querySelectorAll('pre code').forEach((block) => {
-                                if (typeof hljs !== 'undefined') {
-                                    hljs.highlightElement(block);
-                                }
-                            });
-                        } catch (e) {
-                            analysisContent.textContent = analysisBuffer;
-                        }
-                    } else {
-                        analysisContent.textContent = analysisBuffer;
-                    }
-                }
-            } catch (error) {
-                console.error('分析失败:', error);
-                analysisContent.innerHTML = `<div class="error-message">分析失败: ${error.message}</div>`;
-                this.showGlobalToast('分析失败');
-            }
-        }
-
-        async translate() {
-            const contentArea = this.element.querySelector('.message-content');
-            
-            // 检查是否已经有翻译部分
-            if (contentArea.querySelector('.translation-section')) {
-                this.showGlobalToast('已存在翻译');
-                return;
-            }
-
-            // 创建翻译部分的 HTML
-            const translationHtml = `
-                <details class="translation-section" open>
-                    <summary>翻译</summary>
-                    <div class="translation-content">正在翻译...</div>
-                </details>
-            `;
-            
-            // 添加到现有内容后面
-            contentArea.innerHTML += translationHtml;
-            
-            const translationContent = contentArea.querySelector('.translation-content');
-            let translationBuffer = '';
-
-            try {
-                // 发送翻译请求
-                const response = await fetch('/api/translation', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        sentence: this.content,
-                        target_language: ChatTile.instance.target_language || 'en',
-                        mother_language: ChatTile.instance.mother_language || 'zh'
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                // 处理流式响应
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    
-                    const token = decoder.decode(value, { stream: true });
-                    if (token.includes('翻译失败')) {
-                        throw new Error(token);
-                    }
-                    
-                    translationBuffer += token;
-                    
-                    // 使用 marked 渲染 Markdown
-                    if (typeof marked !== 'undefined') {
-                        try {
-                            translationContent.innerHTML = marked.parse(translationBuffer);
-                            
-                            // 代码高亮
-                            translationContent.querySelectorAll('pre code').forEach((block) => {
-                                if (typeof hljs !== 'undefined') {
-                                    hljs.highlightElement(block);
-                                }
-                            });
-                        } catch (e) {
-                            translationContent.textContent = translationBuffer;
-                        }
-                    } else {
-                        translationContent.textContent = translationBuffer;
-                    }
-                }
-            } catch (error) {
-                console.error('翻译失败:', error);
-                translationContent.innerHTML = `<div class="error-message">翻译失败: ${error.message}</div>`;
-                this.showGlobalToast('翻译失败');
-            }
-        }
     }
     class STT_uniform_engine {//输入为mother_language和模型以及网页音频流，输出为文本迭代器(流式输出)
         //必须要有加载模型过程
