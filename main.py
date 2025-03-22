@@ -1,14 +1,20 @@
 from flask import Flask, request, jsonify, send_from_directory, Response, stream_with_context
 from config import Config, Platform
 from Agent import PLLAgent
+from STT import WebSTTThread
 import sqlite3
 import os
 import time
 import datetime
+import json
+import signal
+import sys
+
 
 app = Flask(__name__)
 config = Config()
 agent = PLLAgent(platform=Platform())
+stt = WebSTTThread()
 
 # 获取当前文件夹路径
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -141,6 +147,29 @@ def translation():
         print(f"Error in translation endpoint: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/help_user', methods=['POST'])
+def help_user():
+    try:
+        data = request.json
+        mother_language = data.get('mother_language', '')
+        target_language = data.get('target_language', '')
+        history = data.get('history', [])
+
+        def generate():
+            for token in agent.gen_help_user_response(mother_language, target_language, history):
+                yield token 
+
+        return Response(
+            stream_with_context(generate()),
+            mimetype='text/event-stream',
+            headers={
+                'Cache-Control': 'no-cache',
+                'X-Accel-Buffering': 'no'
+            }
+        )
+    except Exception as e:
+        print(f"Error in help_user endpoint: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500    
 
 @app.route('/api/avatars', methods=['GET'])
 def get_avatars():
@@ -158,12 +187,24 @@ def get_avatars():
 @app.route('/api/stt/load', methods=['POST'])
 def load_stt():
     """加载 STT 模型"""
-    global stt_loaded
     try:
-        if not stt_loaded:
-            # 模拟加载过程
-            time.sleep(2)  # 模拟加载时间
-            stt_loaded = True
+        if not stt.is_ready():
+            
+            # 启动 STT
+            stt.start()
+            
+            # 等待 recorder 就绪
+            timeout = 50  # 50秒超时
+            start_time = time.time()
+            while not stt.is_ready():
+                if time.time() - start_time > timeout:
+                    raise TimeoutError("STT 模型加载超时")
+                time.sleep(0.1)
+                
+                # 如果线程已经退出，说明初始化失败
+                if not stt.thread.is_alive():
+                    raise RuntimeError("STT 初始化失败")
+            
             return jsonify({
                 'success': True,
                 'status': 'loaded',
@@ -176,6 +217,9 @@ def load_stt():
                 'message': 'STT 模型已经加载'
             })
     except Exception as e:
+        # 发生错误时清理资源
+        if stt:
+            stt.stop()
         return jsonify({
             'success': False,
             'status': 'error',
@@ -185,12 +229,10 @@ def load_stt():
 @app.route('/api/stt/unload', methods=['POST'])
 def unload_stt():
     """卸载 STT 模型"""
-    global stt_loaded
     try:
-        if stt_loaded:
-            # 模拟卸载过程
-            time.sleep(1)  # 模拟卸载时间
-            stt_loaded = False
+        if stt.is_ready():
+            if stt:
+                stt.stop()
             return jsonify({
                 'success': True,
                 'status': 'unloaded',
@@ -209,13 +251,100 @@ def unload_stt():
             'message': f'卸载失败: {str(e)}'
         }), 500
 
+@app.route('/api/stt/resume', methods=['POST'])
+def resume_stt():
+    """恢复 STT 录音"""
+    try:
+        if not stt.is_ready():
+            return jsonify({
+                'success': False,
+                'status': 'not_loaded',
+                'message': 'STT 模型未加载'
+            })
+        
+        if not stt:
+            return jsonify({
+                'success': False,
+                'status': 'error',
+                'message': 'STT 实例不存在'
+            })
+        
+        stt.resume()
+        return jsonify({
+            'success': True,
+            'message': 'STT 录音已恢复'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'status': 'error',
+            'message': f'恢复录音失败: {str(e)}'
+        }), 500
+
+@app.route('/api/stt/pause', methods=['POST'])
+def pause_stt():
+    """暂停 STT 录音"""
+    try:
+        if not stt.is_ready():
+            return jsonify({
+                'success': False,
+                'status': 'not_loaded',
+                'message': 'STT 模型未加载'
+            })
+        
+        if not stt:
+            return jsonify({
+                'success': False,
+                'status': 'error',
+                'message': 'STT 实例不存在'
+            })
+        
+        stt.pause()
+        return jsonify({
+            'success': True,
+            'message': 'STT 录音已暂停'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'status': 'error',
+            'message': f'暂停录音失败: {str(e)}'
+        }), 500
+
 @app.route('/api/stt/status', methods=['GET'])
 def get_stt_status():
     """获取 STT 模型状态"""
-    global stt_loaded
-    return jsonify({
-        'loaded': stt_loaded
-    })
+    try:
+        if not stt:
+            return jsonify({
+                'ready': False,
+                'paused': True,
+                'running': False
+            })
+        
+        status = stt.get_status()
+        return jsonify(status)
+    except Exception as e:
+        return jsonify({
+            'error': str(e)
+        }), 500
+
+@app.route('/api/stt/text', methods=['GET'])
+def get_stt_text():
+    """获取 STT 文本"""
+    try:
+        if not stt.is_ready():
+            return jsonify({
+                'text': json.dumps({'type': 'error', 'text': 'STT 未加载'})
+            })
+        
+        return jsonify({
+            'text': stt.get_text()
+        })
+    except Exception as e:
+        return jsonify({
+            'text': json.dumps({'type': 'error', 'text': str(e)})
+        })
 
 @app.route('/api/sessions', methods=['GET'])
 def get_sessions():
@@ -260,7 +389,6 @@ def get_sessions():
                 'scenario': scenario,
                 'time': time_display
             })
-            print(formatted_sessions)
             
         return jsonify(formatted_sessions)
     except Exception as e:
@@ -559,5 +687,29 @@ def update_message():
             'error': str(e)
         }), 500
 
+def signal_handler(sig, frame):
+    """处理退出信号"""
+    print('\nShutting down server...')
+    if stt:
+        stt.stop()
+    sys.exit(0)
+
+# 注册信号处理器
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    # 修改启动方式
+    from werkzeug.serving import run_simple
+    
+    try:
+        # 使用 run_simple 替代 app.run
+        run_simple('0.0.0.0', 5000, app, 
+                  use_reloader=False,  # 禁用重载器
+                  use_debugger=False,  # 禁用调试器
+                  threaded=True)       # 启用多线程
+    except KeyboardInterrupt:
+        # 确保正确清理资源
+        if stt:
+            stt.stop()
+        print("\nServer shutting down...")

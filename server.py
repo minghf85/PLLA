@@ -50,9 +50,9 @@ import io
 unknown_sentence_detection_pause = 0.4
 
 SUPPORTED_ENGINES = [
-    # "coqui",  # comment coqui out for tests where you need server start often,
-    "kokoro"
-    # "edge"
+    "coqui",  # comment coqui out for tests where you need server start often,
+    "kokoro",
+    "edge"
 ]
 
 # change start engine:

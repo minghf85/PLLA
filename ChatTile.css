@@ -237,7 +237,8 @@
     width: fit-content;
     min-width: 100%;
     font-family: var(--font-family);
-    line-height: 1.4;
+    line-height: 1.6;
+    font-size: 1.1em;
     color: var(--text-color);
     overflow-wrap: break-word;
     padding: 8px 8px 4px;
@@ -252,22 +253,25 @@
 /* Markdown 样式 */
 .markdown-body {
     width: 100%;
+    font-size: 1.1em;
 }
 
 .markdown-body p {
     margin: 0;
     color: var(--text-color);
+    font-size: 1.1em;
 }
 
 .markdown-body pre {
     background: var(--code-bg);
     overflow-x: auto;
     max-width: 100%;
+    font-size: 0.95em;
 }
 
 .markdown-body code {
     font-family: var(--mono-font);
-    font-size: 0.9em;
+    font-size: 0.95em;
     background: var(--code-bg);
     color: var(--code-text);
 }

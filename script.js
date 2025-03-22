@@ -1254,6 +1254,8 @@ document.addEventListener('DOMContentLoaded', async function() {
             super('chat', options);
             this.current_session_id = null;
             this.current_session_name = '';
+            this.current_contact_config = null;
+            this.current_scenario_config = null;
             this.current_contact = 'default';
             this.current_scenario = 'default';
             this.current_prompt = "default";
@@ -1301,7 +1303,8 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         updateCurrentContact(contact) {
             this.current_contact = contact;
-            this.target_language = contact.target_language;
+            this.current_contact_config = Global_config.Learn_config[mother_language].contacts.find(contact => contact.name === this.current_contact);
+            this.target_language = this.current_contact_config.target_language;
             const contactNameElement = this.element.querySelector('.contact-name');
             if (contactNameElement) {
                 contactNameElement.textContent = contact;
@@ -1311,6 +1314,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         updateCurrentScenario(scenario) {
             this.current_scenario = scenario;
+            this.current_scenario_config = Global_config.Learn_config[mother_language].scenes.find(scenario => scenario.name === this.current_scenario);
             const scenarioNameElement = this.element.querySelector('.scenario-name');
             if (scenarioNameElement) {
                 scenarioNameElement.textContent = scenario;
@@ -1716,21 +1720,87 @@ document.addEventListener('DOMContentLoaded', async function() {
             // 语音输入
             let isRecording = false;
             let recordingTimeout;
-            
-            voiceInputBtn.addEventListener('mousedown', () => {
-                isRecording = true;
-                voiceInputBtn.classList.add('recording');
-                // TODO: 开始录音
-                console.log('开始录音...');
-            });
+            let sttPollingInterval = null;  // 用于轮询识别结果
 
-            voiceInputBtn.addEventListener('mouseup', () => {
-                if (isRecording) {
+            // 开始录音按钮事件
+            voiceInputBtn.addEventListener('mousedown', async () => {
+                try {
+                    // 1. 检查 STT 状态
+                    const statusResponse = await fetch('/api/stt/status');
+                    const statusData = await statusResponse.json();
+                    
+                    if (!statusData.ready) {
+                        showGlobalToast('请先加载 STT 模型');
+                        return;
+                    }
+
+                    // 2. 开始录音
+                    isRecording = true;
+                    voiceInputBtn.classList.add('recording');
+                    
+                    // 3. 恢复 STT 处理
+                    await fetch('/api/stt/resume', { method: 'POST' });
+
+                    // 4. 开始轮询识别结果
+                    sttPollingInterval = setInterval(async () => {
+                        try {
+                            const response = await fetch('/api/stt/text');
+                            const data = await response.json();
+                            
+                            if (data.text) {
+                                const textData = JSON.parse(data.text);
+                                
+                                switch(textData.type) {
+                                    case 'interim':
+                                        // 只添加新的文本部分
+                                        input.value = textData.full_text;
+                                        break;
+                                        
+                                    case 'final':
+                                        // 使用完整的文本
+                                        input.value = textData.full_text;
+                                        break;
+                                        
+                                    case 'error':
+                                        console.error('STT Error:', textData.text);
+                                        showGlobalToast('语音识别错误: ' + textData.text);
+                                        break;
+                                }
+                            }
+                        } catch (error) {
+                            console.error('轮询识别结果失败:', error);
+                        }
+                    }, 100);  // 每 100ms 轮询一次
+
+                } catch (error) {
+                    console.error('开始录音失败:', error);
+                    showGlobalToast('开始录音失败');
                     isRecording = false;
                     voiceInputBtn.classList.remove('recording');
-                    clearTimeout(recordingTimeout);
-                    // TODO: 结束录音并处理
-                    console.log('结束录音');
+                }
+            });
+
+            // 结束录音按钮事件
+            voiceInputBtn.addEventListener('mouseup', async () => {
+                if (isRecording) {
+                    try {
+                        // 1. 停止录音
+                        isRecording = false;
+                        voiceInputBtn.classList.remove('recording');
+                        
+                        // 2. 清除轮询定时器
+                        if (sttPollingInterval) {
+                            clearInterval(sttPollingInterval);
+                            sttPollingInterval = null;
+                        }
+                        
+                        // 3. 暂停 STT 处理
+                        await fetch('/api/stt/pause', { method: 'POST' });
+                        
+                    } catch (error) {
+                        console.error('结束录音失败:', error);
+                        showGlobalToast('结束录音失败');
+                    }
                 }
             });
 
@@ -1802,11 +1872,39 @@ document.addEventListener('DOMContentLoaded', async function() {
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder();
                     let token = '';
+                    let tts_buffer = '';
+                    let lastPlayedLength = 0;
+                    const minPlayLength = 6; // 最小播放长度
+
                     while (true) {
                         const { done, value } = await reader.read();
-                        if (done) break;
-                        
+                        if (done) {
+                            // 播放剩余的文本
+                            if (isAutoPlaying && tts_buffer.length > lastPlayedLength) {
+                                aiMsg.speak(tts_buffer.slice(lastPlayedLength));
+                            }
+                            break;
+                        }
+
                         token = decoder.decode(value, { stream: true });
+                        tts_buffer += token;
+                        
+                        // 自动播放逻辑
+                        if (isAutoPlaying && (tts_buffer.length - lastPlayedLength) >= minPlayLength) {
+                            // 找到最近的标点符号或空格
+                            const textToPlay = tts_buffer.slice(lastPlayedLength);
+                            const punctuationMatch = textToPlay.match(/[,.!?;。，！？；]\s*|[\s\n]+/);
+                            
+                            if (punctuationMatch) {
+                                const playEndIndex = punctuationMatch.index + punctuationMatch[0].length;
+                                if (playEndIndex >= minPlayLength) {
+                                    // 播放到标点符号为止的文本
+                                    aiMsg.speak(textToPlay.slice(0, playEndIndex));
+                                    lastPlayedLength = lastPlayedLength + playEndIndex;
+                                }
+                            }
+                        }
+
                         scrollToLatest();
                         aiMsg.streamContent(token);
                     }
@@ -1860,16 +1958,13 @@ document.addEventListener('DOMContentLoaded', async function() {
                 // 设置加载中状态
                 sttLoadBtn.classList.add('loading');
                 const icon = sttLoadBtn.querySelector('i');
-                icon.className = 'fas fa-spinner';
+                icon.className = 'fas fa-spinner fa-spin';
                 
                 try {
                     if (!isLoaded) {
                         // 加载 STT
                         const response = await fetch('/api/stt/load', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            }
+                            method: 'POST'
                         });
                         const data = await response.json();
                         
@@ -1885,10 +1980,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     } else {
                         // 卸载 STT
                         const response = await fetch('/api/stt/unload', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            }
+                            method: 'POST'
                         });
                         const data = await response.json();
                         
@@ -1916,8 +2008,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                 try {
                     const response = await fetch('/api/stt/status');
                     const data = await response.json();
-                    
-                    if (data.loaded) {
+                    console.log(data);
+                    if (data.ready) {
                         sttLoadBtn.classList.add('loaded');
                         sttLoadBtn.querySelector('i').className = 'fas fa-microphone';
                         sttLoadBtn.title = '卸载STT';
@@ -2000,7 +2092,9 @@ document.addEventListener('DOMContentLoaded', async function() {
                     
                     // 清空聊天历史
                     this.chatHistory = [];
-                    this.target_language = Global_config.Learn_config[mother_language].contacts.find(contact => contact.name === this.current_contact).target_language;
+                    this.current_contact_config = Global_config.Learn_config[mother_language].contacts.find(contact => contact.name === this.current_contact);
+                    this.current_scenario_config = Global_config.Learn_config[mother_language].scenes.find(scenario => scenario.name === this.current_scenario) || null;
+                    this.target_language = this.current_contact_config.target_language;
                     this.updateCurrentPrompt();
                     // 重新加载消息
                     for (const msg of data.messages) {
@@ -3201,6 +3295,102 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // 修改 AIMessage 类
     class AIMessage extends MessageBox {
+        static audioQueue = [];
+        static audioCache = [];  // 新增：用于存储已合成的音频
+        static isPlaying = false;
+        static isSynthesizing = false;  // 新增：标记是否正在合成
+
+        // 修改：添加音频合成方法
+        static async synthesizeAudio({engine_name, voice_name, text, engine_type, tts_setting}) {
+            try {
+                let audioBlob;
+                if (engine_type === 'RealtimeTTS') {
+                    //设置engine和voice
+                    const setEngineResponse = await fetch(`http://127.0.0.1:8000/set_engine?engine_name=${engine_name.toLowerCase()}`);
+                    if (!setEngineResponse.ok) throw new Error('设置引擎失败');
+                    const setVoiceResponse = await fetch(`http://127.0.0.1:8000/setvoice?voice_name=${encodeURIComponent(voice_name)}`);
+                    if (!setVoiceResponse.ok) throw new Error('设置声音失败');
+                    const response = await fetch(`http://127.0.0.1:8000/tts?text=${encodeURIComponent(text)}`);
+                    if (!response.ok) throw new Error('TTS请求失败');
+                    audioBlob = await response.blob();
+                } else if (engine_type === 'GPT_SoVits') {
+                    const response = await fetch('http://127.0.0.1:6880/tts', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(tts_setting)
+                    });
+                    if (!response.ok) throw new Error('TTS请求失败');
+                    audioBlob = await response.blob();
+                }
+                return new Audio(URL.createObjectURL(audioBlob));
+            } catch (error) {
+                console.error('音频合成错误:', error);
+                throw error;
+            }
+        }
+
+        // 修改：处理音频队列的方法
+        static async processAudioQueue() {
+            // 开始合成进程
+            if (!this.isSynthesizing) {
+                this.isSynthesizing = true;
+                this.synthesizeProcess();
+            }
+
+            // 开始播放进程
+            if (!this.isPlaying) {
+                this.isPlaying = true;
+                this.playProcess();
+            }
+        }
+
+        // 新增：音频合成进程
+        static async synthesizeProcess() {
+            while (true) {
+                if (this.audioQueue.length === 0) {
+                    this.isSynthesizing = false;
+                    break;
+                }
+
+                const audioConfig = this.audioQueue[0];
+                try {
+                    const audio = await this.synthesizeAudio(audioConfig);
+                    this.audioCache.push(audio);
+                    this.audioQueue.shift();
+                } catch (error) {
+                    console.error('音频合成失败:', error);
+                    this.audioQueue.shift();
+                }
+            }
+        }
+
+        // 新增：音频播放进程
+        static async playProcess() {
+            while (true) {
+                if (this.audioCache.length === 0) {
+                    if (this.audioQueue.length === 0) {
+                        this.isPlaying = false;
+                        break;
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    continue;
+                }
+
+                const audio = this.audioCache[0];
+                try {
+                    await new Promise((resolve, reject) => {
+                        audio.onended = resolve;
+                        audio.onerror = reject;
+                        audio.play();
+                    });
+                    this.audioCache.shift();
+                } catch (error) {
+                    console.error('音频播放失败:', error);
+                    this.audioCache.shift();
+                }
+            }
+        }
+
         constructor(content, options = {}) {
             // 合并基类按钮和AI消息特有的按钮
             const aiOptions = {
@@ -3252,8 +3442,8 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         // 添加帮助回答方法
         helpAnswer() {
-            console.log('帮忙回答功能待实现');
-            this.showGlobalToast('帮忙回答功能开发中');
+            //生成到输入框中
+            console.log("开发中")
         }
 
         toggleVisibility() {
@@ -3274,10 +3464,48 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
         }
 
-        speak() {
-            
-            console.log('朗读功能待实现');
-            this.showGlobalToast('朗读功能开发中');
+        async speak(text = null) {
+            const voice_engine = ChatTile.instance.current_contact_config.voice_engine;
+            if (!voice_engine) {
+                this.showGlobalToast('未配置语音引擎');
+                return;
+            }
+
+            const engine_name = voice_engine.engine_name;
+            const engine_type = voice_engine.TTS_type;
+            const textToSpeak = text || this.content;
+
+            try {
+                if (engine_type === 'RealtimeTTS') {
+                    AIMessage.audioQueue.push({
+                        engine_name,
+                        voice_name: voice_engine.voice_name,
+                        text: textToSpeak,
+                        engine_type
+                    });
+                } else if (engine_type === 'GPT_SoVits') {
+                    const tts_setting = Global_config.Engine_config.TTS.find(config => 
+                        config.engine_name === engine_name
+                    ).tts_settings;
+                    tts_setting["text"] = textToSpeak;
+                    
+                    AIMessage.audioQueue.push({
+                        engine_name,
+                        voice_name: voice_engine.voice_name,
+                        text: textToSpeak,
+                        engine_type,
+                        tts_setting
+                    });
+                } else {
+                    this.showGlobalToast('不支持的引擎类型');
+                    return;
+                }
+
+                await AIMessage.processAudioQueue();
+            } catch (error) {
+                console.error('TTS错误:', error);
+                this.showGlobalToast('语音生成失败: ' + error.message);
+            }
         }
 
     }
@@ -4194,7 +4422,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     // 修改试听功能的请求
-    async function previewVoice(engineName, voiceName, text = '这是一段测试语音') {
+    async function previewVoice(engineName, voiceName, text = 'this is a test voice') {
         try {
             const port = 8000; // 使用server.py的端口
             const response = await fetch(`http://127.0.0.1:${port}/tts/preview`, {

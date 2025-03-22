@@ -22,7 +22,7 @@
                 "tile": {
                     "position": [
                         0,
-                        2,
+                        1,
                         0
                     ],
                     "size": "1x1"
@@ -33,7 +33,7 @@
                 "tile": {
                     "position": [
                         3,
-                        2,
+                        1,
                         0
                     ],
                     "size": "1x1"
@@ -44,7 +44,7 @@
                 "tile": {
                     "position": [
                         1,
-                        2,
+                        1,
                         0
                     ],
                     "size": "1x1"
@@ -55,7 +55,7 @@
                 "tile": {
                     "position": [
                         1,
-                        3,
+                        2,
                         0
                     ],
                     "size": "1x1"
@@ -66,7 +66,7 @@
                 "tile": {
                     "position": [
                         0,
-                        3,
+                        2,
                         0
                     ],
                     "size": "1x1"
@@ -77,7 +77,7 @@
                 "tile": {
                     "position": [
                         0,
-                        4,
+                        3,
                         0
                     ],
                     "size": "1x1"
@@ -88,7 +88,7 @@
                 "tile": {
                     "position": [
                         1,
-                        4,
+                        3,
                         0
                     ],
                     "size": "1x1"
@@ -99,7 +99,7 @@
                 "tile": {
                     "position": [
                         2,
-                        2,
+                        1,
                         0
                     ],
                     "size": "1x1"
@@ -110,7 +110,7 @@
                 "tile": {
                     "position": [
                         2,
-                        3,
+                        2,
                         0
                     ],
                     "size": "1x1"
@@ -120,58 +120,89 @@
         "chat_tile": {
             "tile": {
                 "position": [
-                    5,
+                    4,
                     0,
                     0
                 ],
-                "size": "4x8"
+                "size": "8x7"
             }
         },
         "zh": {
             "contacts": [
                 {
-                    "name": "佐藤さん",
+                    "name": "卡卡罗",
                     "target_language": "ja",
-                    "prompt": "你是一个日语学习伙伴，帮助我学习日语。",
+                    "prompt": "索拉里斯最强",
                     "speed": 1,
-                    "voice_engine": "RealtimeTTS",
-                    "icon": "./assets/avatars/default_avatar.png",
+                    "voice_engine": {
+                        "TTS_type": "RealtimeTTS",
+                        "engine_name": "kokoro",
+                        "voice_name": "jm_kumo"
+                    },
+                    "icon": "./assets/avatars/鸣潮-icon-卡卡罗.png",
                     "tile": {
                         "position": [
                             1,
-                            5,
+                            4,
                             0
                         ],
                         "size": "1x1"
                     }
                 },
                 {
-                    "name": "Alice",
-                    "target_language": "en",
-                    "prompt": "你是一个英语学习伙伴，帮助我学习英语。",
+                    "name": "长离",
+                    "target_language": "ja",
+                    "prompt": "教日语的大老师",
                     "speed": 1,
-                    "voice_engine": "GPT_SoVits",
-                    "icon": "./assets/avatars/default_avatar.png",
+                    "voice_engine": {
+                        "TTS_type": "GPT_SoVits",
+                        "engine_name": "GPT_SoVits"
+                    },
+                    "icon": "./assets/avatars/鸣潮-icon-长离.png",
                     "tile": {
                         "position": [
                             0,
-                            5,
+                            4,
                             0
                         ],
                         "size": "1x1"
                     }
                 },
                 {
-                    "name": "薇尔莉特",
-                    "target_language": "zh",
-                    "prompt": "紫罗兰永恒花园角色",
+                    "name": "Fox",
+                    "target_language": "en",
+                    "prompt": "英语老师",
                     "speed": 1,
-                    "voice_engine": "RealtimeTTS",
+                    "voice_engine": {
+                        "TTS_type": "RealtimeTTS",
+                        "engine_name": "kokoro",
+                        "voice_name": "af_bella"
+                    },
                     "icon": "./assets/avatars/default_avatar.png",
                     "tile": {
                         "position": [
+                            3,
+                            4,
+                            0
+                        ],
+                        "size": "1x1"
+                    }
+                },
+                {
+                    "name": "鲁鲁修",
+                    "target_language": "ja",
+                    "prompt": "一个喜欢看动漫，说中二话的高中生",
+                    "speed": 1,
+                    "voice_engine": {
+                        "TTS_type": "RealtimeTTS",
+                        "engine_name": "kokoro",
+                        "voice_name": "jm_kumo"
+                    },
+                    "icon": "./assets/avatars/鸣潮-icon-卡卡罗.png",
+                    "tile": {
+                        "position": [
                             2,
-                            5,
+                            4,
                             0
                         ],
                         "size": "1x1"
@@ -180,24 +211,12 @@
             ],
             "scenes": [
                 {
-                    "name": "咖啡厅对话",
-                    "prompt": "在咖啡厅中对话",
-                    "tile": {
-                        "position": [
-                            1,
-                            6,
-                            0
-                        ],
-                        "size": "1x1"
-                    }
-                },
-                {
                     "name": "学校",
                     "prompt": "在学校中对话",
                     "tile": {
                         "position": [
                             0,
-                            6,
+                            5,
                             0
                         ],
                         "size": "1x1"
@@ -205,11 +224,11 @@
                 },
                 {
                     "name": "公园",
-                    "prompt": "公园问候，日常对话",
+                    "prompt": "公园问候，日常对话和交流",
                     "tile": {
                         "position": [
-                            2,
-                            6,
+                            1,
+                            5,
                             0
                         ],
                         "size": "1x1"
@@ -223,12 +242,35 @@
                     "name": "佐藤",
                     "target_language": "ja",
                     "prompt": "You are an English learning partner, helping me learn Japanese.",
-                    "speed": 1.0,
-                    "voice_engine": "RealtimeTTS",
+                    "speed": 1,
+                    "voice_engine": {
+                        "TTS_type": "RealtimeTTS",
+                        "engine_name": "kokoro",
+                        "voice_name": "jf_alpha"
+                    },
                     "icon": "./assets/avatars/default_avatar.png",
                     "tile": {
                         "position": [
                             0,
+                            5,
+                            0
+                        ],
+                        "size": "1x1"
+                    }
+                },
+                {
+                    "name": "Fox",
+                    "target_language": "zh",
+                    "prompt": "中文学习伴侣",
+                    "speed": 1,
+                    "voice_engine": {
+                        "TTS_type": "GPT_SoVits",
+                        "engine_name": "GPT_SoVits"
+                    },
+                    "icon": "./assets/avatars/default_avatar.png",
+                    "tile": {
+                        "position": [
+                            1,
                             5,
                             0
                         ],
@@ -258,7 +300,10 @@
                     "target_language": "en",
                     "prompt": "あなたは日本語学習パートナーで、私が英語を学ぶのを手伝ってくれます。",
                     "speed": 1,
-                    "voice_engine": "GPT_SoVits",
+                    "voice_engine": {
+                        "TTS_type": "GPT_SoVits",
+                        "engine_name": "GPT_SoVits"
+                    },
                     "icon": "./assets/avatars/default_avatar.png",
                     "tile": {
                         "position": [
@@ -299,31 +344,90 @@
         }
     },
     "Engine_config": {
-        "TTS": {
-            "RealtimeTTS": {
-                "engine": "Kokoros"
+        "TTS": [
+            {
+                "TTS_type": "RealtimeTTS",
+                "engine_name": "Edge",
+                "support_languages": [
+                    "zh",
+                    "en",
+                    "ja",
+                    "fr",
+                    "de",
+                    "es",
+                    "it",
+                    "pt",
+                    "ru",
+                    "ar"
+                ],
+                "support_voice_selection": true
             },
-            "GPT_SoVits": {
-                "host": "127.0.0.1",
-                "port": "6880"
+            {
+                "TTS_type": "RealtimeTTS",
+                "engine_name": "kokoro",
+                "support_languages": [
+                    "zh",
+                    "en",
+                    "ja",
+                    "fr",
+                    "de",
+                    "es",
+                    "it",
+                    "pt",
+                    "ru",
+                    "ar"
+                ],
+                "support_voice_selection": true
+            },
+            {
+                "TTS_type": "RealtimeTTS",
+                "engine_name": "coqui",
+                "support_languages": [
+                    "en"
+                ],
+                "support_voice_selection": true
+            },
+            {
+                "TTS_type": "GPT_SoVits",
+                "engine_name": "GPT_SoVits",
+                "support_languages": [
+                    "ja",
+                    "en",
+                    "zh"
+                ],
+                "support_voice_selection": false,
+                "tts_settings": {
+                    "text_lang": "ja",
+                    "prompt_lang": "zh",
+                    "prompt_text": "呵哼哼，想要拿到它的话，就先加油追上我吧。",
+                    "ref_audio_path": "H:/AIVtuber/VOICE_reference/HAPPY.wav",
+                    "aux_ref_audio_paths": [],
+                    "top_k": 5.0,
+                    "top_p": 1.0,
+                    "temperature": 1.0,
+                    "speed_factor": 1.0,
+                    "batch_size": 5.0,
+                    "text_split_method": "cut5",
+                    "streaming_mode": false
+                }
             }
-        },
+        ],
         "STT": {
             "RealtimeSTT": {
-                "engine": "whisper-base"
+                "model": "large-v3"
             }
         }
     },
     "LLM_config": {
+        "deepseek": {
+            "url": "https://api.deepseek.com/v1",
+            "model": "deepseek-chat",
+            "api_key": ""
+        },
         "ollama": {
             "url": "http://127.0.0.1:11434/v1",
             "model": "qwen2.5:14b",
             "api_key": "ollama"
-        },
-        "deepseek": {
-            "url": "https://api.deepseek.com/v1",
-            "model": "deepseek-chat",
-            "api_key": "sk-b81b3624588945e38963a70c5d6bd230"
         },
         "openai": {
             "url": "https://api.openai.com/v1",

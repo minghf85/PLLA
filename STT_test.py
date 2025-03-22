@@ -231,6 +231,7 @@ if __name__ == '__main__':
         devices_info = ""
         for i in range(audio.get_device_count()):
             dev = audio.get_device_info_by_index(i)
+            print(dev)
             devices_info += f"{dev['index']}: {dev['name']} (hostApi: {dev['hostApi']})\n"
 
             if (LOOPBACK_DEVICE_NAME.lower() in dev['name'].lower()

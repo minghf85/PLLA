@@ -52,7 +52,7 @@ class PLLAgent:
             import traceback
             print(f"Traceback: {traceback.format_exc()}")
             yield "抱歉，发生了错误，请稍后重试。"
-    
+
     def gen_help_user_response(self,  M_lang, T_lang, historys=[]):
         #反转historys的内容,user的输入变成的输入，ai的输入变成用户的输入
         historys = self.reverse_roles(historys)
