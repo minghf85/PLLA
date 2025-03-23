@@ -925,3 +925,58 @@
     filter: blur(5px);
     user-select: none;
 }
+
+/* 移除旧的验证开关样式 */
+.verification-toggle {
+    display: flex;
+    align-items: center;
+    margin-right: 12px;
+}
+
+/* 添加新的控制按钮样式 */
+.control-btn {
+    background: none;
+    border: none;
+    color: var(--text-color);
+    padding: 8px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+}
+
+.control-btn:hover {
+    background: var(--hover-bg);
+}
+
+.control-btn i {
+    font-size: 1.1em;
+}
+
+/* 语言选择下拉框样式 */
+.language-select {
+    padding: 4px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--surface-color);
+    color: var(--text-color);
+    font-size: 0.9em;
+    cursor: pointer;
+    margin: 0 8px;
+}
+
+.language-select:hover {
+    border-color: var(--primary-color);
+}
+
+.language-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
+}
+
+/* 头部右侧按钮组样式 */
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}

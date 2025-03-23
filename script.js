@@ -1251,7 +1251,20 @@ document.addEventListener('DOMContentLoaded', async function() {
     // 修改 ChatTile 类
     class ChatTile extends ContainerTile {
         constructor(options = {}) {
-            super('chat', options);
+            // 在调用 super 之前初始化 sttConfig
+            const defaultConfig = {
+                sttConfig: {
+                    enableVerification: false,  // 默认不启用说话人验证
+                    language: 'auto'  // 默认自动识别语言
+                }
+            };
+            
+            // 合并默认配置和传入的选项
+            const mergedOptions = { ...defaultConfig, ...options };
+            
+            super('chat', mergedOptions);
+            
+            // 初始化其他属性
             this.current_session_id = null;
             this.current_session_name = '';
             this.current_contact_config = null;
@@ -1264,6 +1277,247 @@ document.addEventListener('DOMContentLoaded', async function() {
             ChatTile.instance = this;
             this.chatHistory = [];  // 当前对话历史
             this.sessionHistory = [];  // 会话列表
+            
+            // 确保 sttConfig 存在
+            this.sttConfig = mergedOptions.sttConfig;
+            
+            // 添加 WebSocket 相关属性
+            this.ws = null;
+            this.isWsConnected = false;
+            
+            // 添加录音相关属性
+            this.recorder = null;
+            this.recordInterval = null;
+            this.audioContext = null;
+            this.inputSampleRate = 48000;  // 输入采样率
+            this.outputSampleRate = 16000; // 输出采样率
+        }
+
+        // 初始化录音器
+        async initRecorder() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        sampleRate: 48000,
+                        channelCount: 1
+                    }
+                });
+
+                this.audioContext = new AudioContext({ sampleRate: 48000 });
+                const audioInput = this.audioContext.createMediaStreamSource(stream);
+                const recorder = this.audioContext.createScriptProcessor(4096, 1, 1);
+                
+                const audioData = {
+                    size: 0,
+                    buffer: [],
+                    inputSampleRate: 48000,  // 输入采样率
+                    outputSampleRate: 16000, // 输出采样率
+                    clear: function() {
+                        this.buffer = [];
+                        this.size = 0;
+                    },
+                    input: function(data) {
+                        this.buffer.push(new Float32Array(data));
+                        this.size += data.length;
+                    },
+                    encodePCM: function() {
+                        var bytes = new Float32Array(this.size);
+                        var offset = 0;
+                        for (var i = 0; i < this.buffer.length; i++) {
+                            bytes.set(this.buffer[i], offset);
+                            offset += this.buffer[i].length;
+                        }
+                        var dataLength = bytes.length * 2;  // 16位采样
+                        var buffer = new ArrayBuffer(dataLength);
+                        var data = new DataView(buffer);
+                        offset = 0;
+                        for (var i = 0; i < bytes.length; i++, offset += 2) {
+                            var s = Math.max(-1, Math.min(1, bytes[i]));
+                            data.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+                        }
+                        return new Blob([data], { type: 'audio/pcm' });
+                    }
+                };
+
+                // 添加降采样函数
+                function downsampleBuffer(buffer, inputSampleRate, outputSampleRate) {
+                    if (outputSampleRate === inputSampleRate) {
+                        return buffer;
+                    }
+                    var sampleRateRatio = inputSampleRate / outputSampleRate;
+                    var newLength = Math.round(buffer.length / sampleRateRatio);
+                    var result = new Float32Array(newLength);
+                    var offsetResult = 0;
+                    var offsetBuffer = 0;
+                    while (offsetResult < result.length) {
+                        var nextOffsetBuffer = Math.round((offsetResult + 1) * sampleRateRatio);
+                        var accum = 0, count = 0;
+                        for (var i = offsetBuffer; i < nextOffsetBuffer && i < buffer.length; i++) {
+                            accum += buffer[i];
+                            count++;
+                        }
+                        result[offsetResult] = accum / count;
+                        offsetResult++;
+                        offsetBuffer = nextOffsetBuffer;
+                    }
+                    return result;
+                }
+
+                recorder.onaudioprocess = (e) => {
+                    const resampledData = downsampleBuffer(
+                        e.inputBuffer.getChannelData(0), 
+                        audioData.inputSampleRate, 
+                        audioData.outputSampleRate
+                    );
+                    audioData.input(resampledData);
+                };
+
+                this.recorder = {
+                    start: () => {
+                        audioInput.connect(recorder);
+                        recorder.connect(this.audioContext.destination);
+                    },
+                    stop: () => {
+                        recorder.disconnect();
+                        audioInput.disconnect();
+                    },
+                    getBlob: () => {
+                        return audioData.encodePCM();
+                    },
+                    clear: () => {
+                        audioData.clear();
+                    }
+                };
+
+                return true;
+            } catch (error) {
+                console.error('初始化录音器失败:', error);
+                return false;
+            }
+        }
+
+        // 修改开始录音的方法
+        async startRecording() {
+            if (!this.recorder && !(await this.initRecorder())) {
+                showGlobalToast('初始化录音器失败');
+                return false;
+            }
+
+            try {
+                // 连接 WebSocket
+                const lang = this.sttConfig.language;
+                const sv = this.sttConfig.enableVerification ? 1 : 0;
+                const wsUrl = `ws://127.0.0.1:8888/ws/transcribe?lang=${lang}&sv=${sv}`;
+                
+                this.ws = new WebSocket(wsUrl);
+                this.ws.binaryType = 'arraybuffer';
+
+                this.ws.onopen = () => {
+                    console.log('WebSocket connected');
+                    this.isWsConnected = true;
+                    this.recorder.start();
+                    
+                    // 定时发送音频数据
+                    this.recordInterval = setInterval(() => {
+                        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                            const audioBlob = this.recorder.getBlob();
+                            if (audioBlob.size > 0) {
+                                this.ws.send(audioBlob);
+                                this.recorder.clear();
+                            }
+                        }
+                    }, 500);
+                };
+
+                this.ws.onmessage = (event) => {
+                    try {
+                        const response = JSON.parse(event.data);
+                        console.log('Received:', response);
+                        
+                        if (response.code === 0) {
+                            // 获取当前输入框的值
+                            const input = this.element.querySelector('.chat-input');
+                            if (input && response.data) {
+                                // 将新识别的文本追加到现有文本后面
+                                const currentText = input.value;
+                                input.value = currentText + (currentText ? ' ' : '') + response.data;
+                            }
+                        } else if (response.code === 2) {
+                            // 说话人验证结果
+                            console.log('Speaker verification:', response.data);
+                        }
+                    } catch (error) {
+                        console.error('Failed to parse WebSocket message:', error);
+                    }
+                };
+
+                return true;
+            } catch (error) {
+                console.error('开始录音失败:', error);
+                return false;
+            }
+        }
+
+        // 修改停止录音的方法
+        stopRecording() {
+            if (this.recordInterval) {
+                clearInterval(this.recordInterval);
+                this.recordInterval = null;
+            }
+            
+            if (this.recorder) {
+                this.recorder.stop();
+            }
+            
+            if (this.ws) {
+                this.ws.close();
+                this.ws = null;
+            }
+            
+            this.isWsConnected = false;
+        }
+
+        // 修改创建头部控件的方法
+        createHeaderControls() {
+            const controls = document.createElement('div');
+            controls.className = 'header-right';
+
+            // 创建说话人验证开关
+            const verificationToggle = document.createElement('div');
+            verificationToggle.className = 'verification-toggle';
+            verificationToggle.innerHTML = `
+                <label class="toggle-switch">
+                    <input type="checkbox" ${this.sttConfig.enableVerification ? 'checked' : ''}>
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="toggle-label">说话人验证</span>
+            `;
+
+            // 创建语言选择下拉框
+            const languageSelect = document.createElement('select');
+            languageSelect.className = 'language-select';
+            languageSelect.innerHTML = `
+                <option value="auto" ${this.sttConfig.language === 'auto' ? 'selected' : ''}>自动识别</option>
+                <option value="zh" ${this.sttConfig.language === 'zh' ? 'selected' : ''}>中文</option>
+                <option value="en" ${this.sttConfig.language === 'en' ? 'selected' : ''}>英文</option>
+                <option value="ja" ${this.sttConfig.language === 'ja' ? 'selected' : ''}>日语</option>
+                <option value="ko" ${this.sttConfig.language === 'ko' ? 'selected' : ''}>韩语</option>
+                <option value="yue" ${this.sttConfig.language === 'yue' ? 'selected' : ''}>粤语</option>
+                <option value="nospeech" ${this.sttConfig.language === 'nospeech' ? 'selected' : ''}>无语音</option>
+            `;
+
+            // 添加事件监听
+            verificationToggle.querySelector('input').addEventListener('change', async (e) => {
+                this.sttConfig.enableVerification = e.target.checked;
+            });
+
+            languageSelect.addEventListener('change', async (e) => {
+                this.sttConfig.language = e.target.value;
+            });
+
+            controls.appendChild(verificationToggle);
+            controls.appendChild(languageSelect);
+            return controls;
         }
 
         // 移除createNewSession方法，改为在发送第一条消息时创建会话
@@ -1377,6 +1631,15 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         createElement() {
             const tile = super.createElement();
+            
+            // 确保 sttConfig 存在
+            if (!this.sttConfig) {
+                this.sttConfig = {
+                    enableVerification: false,
+                    language: 'auto'
+                };
+            }
+            
             // 设置最小尺寸
             tile.style.minWidth = `${4*Global_grid_config.tile_size}px`;
             tile.style.minHeight = `${4*Global_grid_config.tile_size}px`;
@@ -1420,9 +1683,19 @@ document.addEventListener('DOMContentLoaded', async function() {
                                 </div>
                             </div>
                             <div class="header-right">
-                                <button class="stt-load-btn" title="加载STT">
-                                    <i class="fas fa-microphone-slash"></i>
+                                <button class="control-btn verification-toggle" 
+                                        title="${this.sttConfig.enableVerification ? '关闭说话人验证' : '启用说话人验证'}">
+                                    <i class="fas ${this.sttConfig.enableVerification ? 'fa-user-check' : 'fa-user'}"></i>
                                 </button>
+                                <select class="language-select">
+                                    <option value="auto" ${this.sttConfig.language === 'auto' ? 'selected' : ''}>自动识别</option>
+                                    <option value="zh" ${this.sttConfig.language === 'zh' ? 'selected' : ''}>中文</option>
+                                    <option value="en" ${this.sttConfig.language === 'en' ? 'selected' : ''}>英文</option>
+                                    <option value="ja" ${this.sttConfig.language === 'ja' ? 'selected' : ''}>日语</option>
+                                    <option value="ko" ${this.sttConfig.language === 'ko' ? 'selected' : ''}>韩语</option>
+                                    <option value="yue" ${this.sttConfig.language === 'yue' ? 'selected' : ''}>粤语</option>
+                                    <option value="nospeech" ${this.sttConfig.language === 'nospeech' ? 'selected' : ''}>无语音</option>
+                                </select>
                                 <button class="new-chat-btn" title="新建对话">
                                     <i class="fas fa-plus"></i>
                                 </button>
@@ -1719,121 +1992,25 @@ document.addEventListener('DOMContentLoaded', async function() {
 
             // 语音输入
             let isRecording = false;
-            let recordingTimeout;
-            let sttPollingInterval = null;  // 用于轮询识别结果
 
             // 开始录音按钮事件
             voiceInputBtn.addEventListener('mousedown', async () => {
-                try {
-                    // 1. 检查 STT 状态
-                    const statusResponse = await fetch('/api/stt/status');
-                    const statusData = await statusResponse.json();
-                    
-                    if (!statusData.ready) {
-                        showGlobalToast('请先加载 STT 模型');
-                        return;
-                    }
-
-                    // 2. 开始录音
+                if (!isRecording) {
                     isRecording = true;
                     voiceInputBtn.classList.add('recording');
-                    
-                    // 3. 恢复 STT 处理
-                    await fetch('/api/stt/resume', { method: 'POST' });
-
-                    // 4. 开始轮询识别结果
-                    sttPollingInterval = setInterval(async () => {
-                        try {
-                            const response = await fetch('/api/stt/text');
-                            const data = await response.json();
-                            console.log(data);
-                            if (data && data.type) {  // 检查返回数据的格式
-                                switch(data.type) {
-                                    case 'final':
-                                        // 最终结果
-                                        input.value = data.text;
-                                        break;
-                                        
-                                    case 'error':
-                                        console.error('STT Error:', data.text);
-                                        showGlobalToast('语音识别错误: ' + data.text);
-                                        break;
-
-                                    case 'empty':
-                                        // 没有新的文本，不做处理
-                                        break;
-                                }
-                            }
-                        } catch (error) {
-                            console.error('轮询识别结果失败:', error);
-                        }
-                    }, 100);  // 每 100ms 轮询一次
-                } catch (error) {
-                    console.error('开始录音失败:', error);
-                    showGlobalToast('开始录音失败');
-                    isRecording = false;
-                    voiceInputBtn.classList.remove('recording');
+                    if (!(await this.startRecording())) {
+                        isRecording = false;
+                        voiceInputBtn.classList.remove('recording');
+                    }
                 }
             });
 
             // 结束录音按钮事件
-            voiceInputBtn.addEventListener('mouseup', async () => {
+            voiceInputBtn.addEventListener('mouseup', () => {
                 if (isRecording) {
-                    try {
-                        // 1. 先暂停 STT 处理
-                        await fetch('/api/stt/pause', { method: 'POST' });
-                        
-                        // 2. 停止录音状态
-                        isRecording = false;
-                        voiceInputBtn.classList.remove('recording');
-                        
-                        // 3. 清除之前的轮询
-                        if (sttPollingInterval) {
-                            clearInterval(sttPollingInterval);
-                        }
-                        
-                        // 4. 获取最后的识别结果
-                        let retryCount = 0;
-                        const maxRetries = 10; // 最多尝试 10 次，即 1 秒
-                        
-                        const getLastResult = () => {
-                            return new Promise((resolve) => {
-                                const tryGetResult = async () => {
-                                    try {
-                                        const response = await fetch('/api/stt/text');
-                                        const data = await response.json();
-                                        console.log('Final text:', data);
-                                        
-                                        if (data && data.type === 'final' && data.text) {
-                                            // 找到有效的最终结果
-                                            input.value = data.text;
-                                            resolve(true);
-                                            return;
-                                        }
-                                        
-                                        if (retryCount < maxRetries) {
-                                            retryCount++;
-                                            setTimeout(tryGetResult, 100);
-                                        } else {
-                                            resolve(false);
-                                        }
-                                    } catch (error) {
-                                        console.error('获取最终结果失败:', error);
-                                        resolve(false);
-                                    }
-                                };
-                                
-                                tryGetResult();
-                            });
-                        };
-                        
-                        // 开始获取最终结果
-                        await getLastResult();
-                        
-                    } catch (error) {
-                        console.error('结束录音失败:', error);
-                        showGlobalToast('结束录音失败');
-                    }
+                    isRecording = false;
+                    voiceInputBtn.classList.remove('recording');
+                    this.stopRecording();
                 }
             });
 
@@ -1979,82 +2156,14 @@ document.addEventListener('DOMContentLoaded', async function() {
                 e.stopPropagation();
             });
 
-            // STT 加载按钮
-            const sttLoadBtn = tile.querySelector('.stt-load-btn');
-            
-            // 初始化时检查 STT 状态
-            checkSTTStatus();
-            
-            sttLoadBtn.addEventListener('click', async function() {
-                const isLoaded = sttLoadBtn.classList.contains('loaded');
-                
-                // 设置加载中状态
-                sttLoadBtn.classList.add('loading');
-                const icon = sttLoadBtn.querySelector('i');
-                icon.className = 'fas fa-spinner fa-spin';
-                
-                try {
-                    if (!isLoaded) {
-                        // 加载 STT
-                        const response = await fetch('/api/stt/load', {
-                            method: 'POST'
-                        });
-                        const data = await response.json();
-                        
-                        if (data.success) {
-                            sttLoadBtn.classList.add('loaded');
-                            icon.className = 'fas fa-microphone';
-                            sttLoadBtn.title = '卸载STT';
-                            showGlobalToast('STT模型加载成功');
-                        } else {
-                            icon.className = 'fas fa-microphone-slash';
-                            showGlobalToast(data.message || 'STT模型加载失败');
-                        }
-                    } else {
-                        // 卸载 STT
-                        const response = await fetch('/api/stt/unload', {
-                            method: 'POST'
-                        });
-                        const data = await response.json();
-                        
-                        if (data.success) {
-                            sttLoadBtn.classList.remove('loaded');
-                            icon.className = 'fas fa-microphone-slash';
-                            sttLoadBtn.title = '加载STT';
-                            showGlobalToast('STT模型已卸载');
-                        } else {
-                            icon.className = 'fas fa-microphone';
-                            showGlobalToast(data.message || 'STT模型卸载失败');
-                        }
-                    }
-                } catch (error) {
-                    console.error('STT操作失败:', error);
-                    icon.className = isLoaded ? 'fas fa-microphone' : 'fas fa-microphone-slash';
-                    showGlobalToast('STT操作失败，请重试');
-                } finally {
-                    sttLoadBtn.classList.remove('loading');
-                }
+            // 绑定说话人验证开关事件
+            const verificationBtn = tile.querySelector('.verification-toggle');
+            verificationBtn.addEventListener('click', () => {
+                this.sttConfig.enableVerification = !this.sttConfig.enableVerification;
+                verificationBtn.title = this.sttConfig.enableVerification ? '关闭说话人验证' : '启用说话人验证';
+                const icon = verificationBtn.querySelector('i');
+                icon.className = `fas ${this.sttConfig.enableVerification ? 'fa-user-check' : 'fa-user'}`;
             });
-            
-            // 检查 STT 状态的函数
-            async function checkSTTStatus() {
-                try {
-                    const response = await fetch('/api/stt/status');
-                    const data = await response.json();
-                    console.log(data);
-                    if (data.ready) {
-                        sttLoadBtn.classList.add('loaded');
-                        sttLoadBtn.querySelector('i').className = 'fas fa-microphone';
-                        sttLoadBtn.title = '卸载STT';
-                    } else {
-                        sttLoadBtn.classList.remove('loaded');
-                        sttLoadBtn.querySelector('i').className = 'fas fa-microphone-slash';
-                        sttLoadBtn.title = '加载STT';
-                    }
-                } catch (error) {
-                    console.error('获取STT状态失败:', error);
-                }
-            }
         }
 
         addMessage(text, type = 'sent') {
@@ -4412,7 +4521,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
     }
 
-
+    function get_default_microphone_id() {}
     // 修改获取声音列表的请求
     async function loadVoiceList(engineName) {
         try {

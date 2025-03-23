@@ -1,7 +1,7 @@
 openai
 python-dotenv
 RealtimeTTS
-RealtimeSTT
 numpy
 requests
 ollama
+websockets

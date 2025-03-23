@@ -1,7 +1,6 @@
 from flask import Flask, request, jsonify, send_from_directory, Response, stream_with_context
 from config import Config, Platform
 from Agent import PLLAgent
-from STT import WebSTTThread
 import sqlite3
 import os
 import time
@@ -9,68 +8,14 @@ import datetime
 import json
 import signal
 import sys
-recorder_config = {
-        'spinner': False,
-        'model': 'large-v3',
-        #'realtime_model_type': 'medium.en',
-        'realtime_model_type': 'tiny',
-        'language': 'en',
-        'silero_sensitivity': 0.2,
-        'webrtc_sensitivity': 3,
-        'post_speech_silence_duration': 0.4,
-        'min_length_of_recording': 0.3,
-        'min_gap_between_recordings': 2,
-        'enable_realtime_transcription': True,
-        'realtime_processing_pause': 0.05,
-        'silero_deactivity_detection': True,
-        'early_transcription_on_silence': 0,
-        'beam_size': 5,
-        'beam_size_realtime': 1,
-        'batch_size': 4,
-        'realtime_batch_size': 4,
-        'no_log_file': True,
-        'initial_prompt_realtime': (
-            "End incomplete sentences with ellipses.\n"
-            "Examples:\n"
-            "Complete: The sky is blue.\n"
-            "Incomplete: When the sky...\n"
-            "Complete: She walked home.\n"
-            "Incomplete: Because he...\n"
-        )
-    }
-
-stt_config = {
-    'spinner': False,
-    'model': 'large-v3',
-    'realtime_model_type': 'tiny',
-    'language': 'ja',
-    'device': "cuda",
-    'silero_sensitivity': 0.2,
-    'webrtc_sensitivity': 3,
-    'post_speech_silence_duration': 0.4,
-    'min_length_of_recording': 0.3,
-    'min_gap_between_recordings': 0.5,
-    'enable_realtime_transcription': True,
-    'realtime_processing_pause': 0.05,
-    'silero_deactivity_detection': True,
-    'early_transcription_on_silence': 0,
-    'beam_size': 5,
-    'beam_size_realtime': 1,
-    'batch_size': 4,
-    'realtime_batch_size': 4,
-    'no_log_file': True
-}
-
 app = Flask(__name__)
 config = Config()
 agent = PLLAgent(platform=Platform())
-stt = WebSTTThread(config=recorder_config)
+
 
 # 获取当前文件夹路径
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-# 添加 STT 状态变量
-stt_loaded = False
 
 @app.route('/')
 def index():
@@ -233,160 +178,6 @@ def get_avatars():
     except Exception as e:
         print(f"Error getting avatar list: {str(e)}")
         return jsonify(['default_avatar.png'])
-
-@app.route('/api/stt/load', methods=['POST'])
-def load_stt():
-    """加载 STT 模型"""
-    try:
-        if not stt.is_ready():
-            # 启动 STT
-            stt.start()
-            
-            # 等待模型就绪
-            timeout = 30  # 30秒超时
-            start_time = time.time()
-            while not stt.is_ready():
-                if time.time() - start_time > timeout:
-                    raise TimeoutError("STT 模型加载超时")
-                time.sleep(0.1)
-            
-            return jsonify({
-                'success': True,
-                'status': 'loaded',
-                'message': 'STT 模型已加载'
-            })
-        else:
-            return jsonify({
-                'success': False,
-                'status': 'already_loaded',
-                'message': 'STT 模型已经加载'
-            })
-    except Exception as e:
-        print(f"Error loading STT: {e}")
-        if stt:
-            stt.stop()
-        return jsonify({
-            'success': False,
-            'status': 'error',
-            'message': f'加载失败: {str(e)}'
-        }), 500
-
-@app.route('/api/stt/unload', methods=['POST'])
-def unload_stt():
-    """卸载 STT 模型"""
-    try:
-        if stt.is_ready():
-            stt.stop()
-            return jsonify({
-                'success': True,
-                'status': 'unloaded',
-                'message': 'STT 模型已卸载'
-            })
-        else:
-            return jsonify({
-                'success': False,
-                'status': 'not_loaded',
-                'message': 'STT 模型未加载'
-            })
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'status': 'error',
-            'message': f'卸载失败: {str(e)}'
-        }), 500
-
-@app.route('/api/stt/resume', methods=['POST'])
-def resume_stt():
-    """恢复 STT 录音"""
-    try:
-        if not stt.is_ready():
-            return jsonify({
-                'success': False,
-                'status': 'not_loaded',
-                'message': 'STT 模型未加载'
-            })
-        
-        if not stt:
-            return jsonify({
-                'success': False,
-                'status': 'error',
-                'message': 'STT 实例不存在'
-            })
-        
-        stt.resume()
-        return jsonify({
-            'success': True,
-            'message': 'STT 录音已恢复'
-        })
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'status': 'error',
-            'message': f'恢复录音失败: {str(e)}'
-        }), 500
-
-@app.route('/api/stt/pause', methods=['POST'])
-def pause_stt():
-    """暂停 STT 录音"""
-    try:
-        if not stt.is_ready():
-            return jsonify({
-                'success': False,
-                'status': 'not_loaded',
-                'message': 'STT 模型未加载'
-            })
-        
-        if not stt:
-            return jsonify({
-                'success': False,
-                'status': 'error',
-                'message': 'STT 实例不存在'
-            })
-        
-        stt.pause()
-        return jsonify({
-            'success': True,
-            'message': 'STT 录音已暂停'
-        })
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'status': 'error',
-            'message': f'暂停录音失败: {str(e)}'
-        }), 500
-
-@app.route('/api/stt/status', methods=['GET'])
-def get_stt_status():
-    """获取 STT 模型状态"""
-    try:
-        if not stt:
-            return jsonify({
-                'ready': False,
-                'paused': True,
-                'running': False
-            })
-        
-        status = stt.get_status()
-        return jsonify(status)
-    except Exception as e:
-        return jsonify({
-            'error': str(e)
-        }), 500
-
-@app.route('/api/stt/text', methods=['GET'])
-def get_stt_text():
-    """获取 STT 文本"""
-    try:
-        if not stt.is_ready():
-            return jsonify({
-                'text': json.dumps({'type': 'error', 'text': 'STT 未加载'})
-            })
-        
-        return jsonify(stt.get_text())
-    except Exception as e:
-        return jsonify({
-            'text': json.dumps({'type': 'error', 'text': str(e)})
-        })
 
 @app.route('/api/sessions', methods=['GET'])
 def get_sessions():
