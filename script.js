@@ -279,8 +279,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     });
 
     document.addEventListener('mousemove', function(e) {
+        
         if (!isResizing) return;
-
         e.preventDefault();
         
         const containerRect = mainContent.getBoundingClientRect();
@@ -1746,24 +1746,21 @@ document.addEventListener('DOMContentLoaded', async function() {
                         try {
                             const response = await fetch('/api/stt/text');
                             const data = await response.json();
-                            
-                            if (data.text) {
-                                const textData = JSON.parse(data.text);
-                                
-                                switch(textData.type) {
-                                    case 'interim':
-                                        // 只添加新的文本部分
-                                        input.value = textData.full_text;
-                                        break;
-                                        
+                            console.log(data);
+                            if (data && data.type) {  // 检查返回数据的格式
+                                switch(data.type) {
                                     case 'final':
-                                        // 使用完整的文本
-                                        input.value = textData.full_text;
+                                        // 最终结果
+                                        input.value = data.text;
                                         break;
                                         
                                     case 'error':
-                                        console.error('STT Error:', textData.text);
-                                        showGlobalToast('语音识别错误: ' + textData.text);
+                                        console.error('STT Error:', data.text);
+                                        showGlobalToast('语音识别错误: ' + data.text);
+                                        break;
+
+                                    case 'empty':
+                                        // 没有新的文本，不做处理
                                         break;
                                 }
                             }
@@ -1771,7 +1768,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                             console.error('轮询识别结果失败:', error);
                         }
                     }, 100);  // 每 100ms 轮询一次
-
                 } catch (error) {
                     console.error('开始录音失败:', error);
                     showGlobalToast('开始录音失败');
@@ -1784,18 +1780,55 @@ document.addEventListener('DOMContentLoaded', async function() {
             voiceInputBtn.addEventListener('mouseup', async () => {
                 if (isRecording) {
                     try {
-                        // 1. 停止录音
+                        // 1. 先暂停 STT 处理
+                        await fetch('/api/stt/pause', { method: 'POST' });
+                        
+                        // 2. 停止录音状态
                         isRecording = false;
                         voiceInputBtn.classList.remove('recording');
                         
-                        // 2. 清除轮询定时器
+                        // 3. 清除之前的轮询
                         if (sttPollingInterval) {
                             clearInterval(sttPollingInterval);
-                            sttPollingInterval = null;
                         }
                         
-                        // 3. 暂停 STT 处理
-                        await fetch('/api/stt/pause', { method: 'POST' });
+                        // 4. 获取最后的识别结果
+                        let retryCount = 0;
+                        const maxRetries = 10; // 最多尝试 10 次，即 1 秒
+                        
+                        const getLastResult = () => {
+                            return new Promise((resolve) => {
+                                const tryGetResult = async () => {
+                                    try {
+                                        const response = await fetch('/api/stt/text');
+                                        const data = await response.json();
+                                        console.log('Final text:', data);
+                                        
+                                        if (data && data.type === 'final' && data.text) {
+                                            // 找到有效的最终结果
+                                            input.value = data.text;
+                                            resolve(true);
+                                            return;
+                                        }
+                                        
+                                        if (retryCount < maxRetries) {
+                                            retryCount++;
+                                            setTimeout(tryGetResult, 100);
+                                        } else {
+                                            resolve(false);
+                                        }
+                                    } catch (error) {
+                                        console.error('获取最终结果失败:', error);
+                                        resolve(false);
+                                    }
+                                };
+                                
+                                tryGetResult();
+                            });
+                        };
+                        
+                        // 开始获取最终结果
+                        await getLastResult();
                         
                     } catch (error) {
                         console.error('结束录音失败:', error);
@@ -3509,31 +3542,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
 
     }
-    class STT_uniform_engine {//输入为mother_language和模型以及网页音频流，输出为文本迭代器(流式输出)
-        //必须要有加载模型过程
-        constructor(mother_language, model, audio_stream){
-            this.mother_language = mother_language;
-            this.model = model;
-            this.audio_stream = audio_stream;
-        }
-        async load_model(){
-            //加载模型
-        }
-        async process_audio_stream(){
-            //处理音频流
-        }
-        async get_text(){
-            //获取文本
-        }
-    }
 
-    class TTS_uniform_engine {//target_language和驱动模块(realtimeTTS或者GPT_SoVits)，输出为音频播放。
-        //必须要有加载模型过程
-        constructor(target_language, driver_module){
-            this.target_language = target_language;
-            this.driver_module = driver_module;
-        }
-    }
     async function Load_config() {
         try {
             const response = await fetch('./config.json');

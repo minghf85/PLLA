@@ -19,7 +19,7 @@ recorder_config = {
         'webrtc_sensitivity': 3,
         'post_speech_silence_duration': 0.4,
         'min_length_of_recording': 0.3,
-        'min_gap_between_recordings': 0.5,
+        'min_gap_between_recordings': 2,
         'enable_realtime_transcription': True,
         'realtime_processing_pause': 0.05,
         'silero_deactivity_detection': True,
@@ -41,19 +41,24 @@ recorder_config = {
 
 stt_config = {
     'spinner': False,
-    'model': 'large-v2',
+    'model': 'large-v3',
     'realtime_model_type': 'tiny',
     'language': 'ja',
-    'model': "large-v3",
     'device': "cuda",
-    "silero_sensitivity":0.2,
-    "webrtc_sensitivity":3,
-    "post_speech_silence_duration":0.4, 
-    "min_length_of_recording":0.3, 
-    "min_gap_between_recordings":1, 
-    "enable_realtime_transcription" : True,
-    "realtime_processing_pause" : 0.05, 
-    "realtime_model_type" : "tiny"
+    'silero_sensitivity': 0.2,
+    'webrtc_sensitivity': 3,
+    'post_speech_silence_duration': 0.4,
+    'min_length_of_recording': 0.3,
+    'min_gap_between_recordings': 0.5,
+    'enable_realtime_transcription': True,
+    'realtime_processing_pause': 0.05,
+    'silero_deactivity_detection': True,
+    'early_transcription_on_silence': 0,
+    'beam_size': 5,
+    'beam_size_realtime': 1,
+    'batch_size': 4,
+    'realtime_batch_size': 4,
+    'no_log_file': True
 }
 
 app = Flask(__name__)
@@ -234,21 +239,16 @@ def load_stt():
     """加载 STT 模型"""
     try:
         if not stt.is_ready():
-            
             # 启动 STT
             stt.start()
             
-            # 等待 recorder 就绪
-            timeout = 50  # 50秒超时
+            # 等待模型就绪
+            timeout = 30  # 30秒超时
             start_time = time.time()
             while not stt.is_ready():
                 if time.time() - start_time > timeout:
                     raise TimeoutError("STT 模型加载超时")
                 time.sleep(0.1)
-                
-                # 如果线程已经退出，说明初始化失败
-                if not stt.thread.is_alive():
-                    raise RuntimeError("STT 初始化失败")
             
             return jsonify({
                 'success': True,
@@ -262,7 +262,7 @@ def load_stt():
                 'message': 'STT 模型已经加载'
             })
     except Exception as e:
-        # 发生错误时清理资源
+        print(f"Error loading STT: {e}")
         if stt:
             stt.stop()
         return jsonify({
@@ -276,8 +276,7 @@ def unload_stt():
     """卸载 STT 模型"""
     try:
         if stt.is_ready():
-            if stt:
-                stt.stop()
+            stt.stop()
             return jsonify({
                 'success': True,
                 'status': 'unloaded',
@@ -286,8 +285,8 @@ def unload_stt():
         else:
             return jsonify({
                 'success': False,
-                'status': 'already_unloaded',
-                'message': 'STT 模型已经卸载'
+                'status': 'not_loaded',
+                'message': 'STT 模型未加载'
             })
     except Exception as e:
         return jsonify({
@@ -383,9 +382,7 @@ def get_stt_text():
                 'text': json.dumps({'type': 'error', 'text': 'STT 未加载'})
             })
         
-        return jsonify({
-            'text': stt.get_text()
-        })
+        return jsonify(stt.get_text())
     except Exception as e:
         return jsonify({
             'text': json.dumps({'type': 'error', 'text': str(e)})
