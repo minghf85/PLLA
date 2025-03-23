@@ -1907,7 +1907,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     let token = '';
                     let tts_buffer = '';
                     let lastPlayedLength = 0;
-                    const minPlayLength = 6; // 最小播放长度
+                    const minPlayLength = 10; // 最小播放长度
 
                     while (true) {
                         const { done, value } = await reader.read();

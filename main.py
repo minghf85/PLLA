@@ -14,7 +14,7 @@ recorder_config = {
         'model': 'large-v3',
         #'realtime_model_type': 'medium.en',
         'realtime_model_type': 'tiny',
-        'language': 'ja',
+        'language': 'en',
         'silero_sensitivity': 0.2,
         'webrtc_sensitivity': 3,
         'post_speech_silence_duration': 0.4,

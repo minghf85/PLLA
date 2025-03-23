@@ -107,6 +107,7 @@ class WebSTTThread(threading.Thread):
     def resume(self):
         """恢复录音"""
         self.paused = False
+        self.recorder.start()
 
     def is_ready(self):
         """检查 STT 是否就绪"""
