@@ -3615,7 +3615,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
             const engine_name = voice_engine.engine_name;
             const engine_type = voice_engine.TTS_type;
-            const textToSpeak = text || this.content;
+            const textToSpeak = text || this.content.replace(/[*_~`#>-]|!\[.*?\]|(?:\[.*?\])\(.*?\)/g, '');
 
             try {
                 if (engine_type === 'RealtimeTTS') {
