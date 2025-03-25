@@ -830,7 +830,6 @@
 /* 翻译部分样式 */
 .translation-section {
     margin-top: 4px;
-    border-top: 1px dashed var(--border-color);
     padding-top: 4px;
 }
 
@@ -839,6 +838,7 @@
     cursor: pointer;
     user-select: none;
     padding: 2px 0;
+    margin-bottom: 4px;
 }
 
 .translation-section summary:hover {
@@ -847,9 +847,7 @@
 
 .translation-content {
     margin: 0;
-    padding: 0;
-    background: var(--surface-color);
-    border-radius: 4px;
+    padding: 4px 0;
     font-size: 0.95em;
 }
 
@@ -864,6 +862,7 @@
 
 .translation-content .markdown-body {
     padding: 0;
+    margin: 0;
 }
 
 /* 确保翻译部分在听力模式下也被遮罩 */
@@ -884,7 +883,6 @@
 /* 分析部分样式 */
 .analysis-section {
     margin-top: 4px;
-    border-top: 1px dashed var(--border-color);
     padding-top: 4px;
 }
 
@@ -893,6 +891,7 @@
     cursor: pointer;
     user-select: none;
     padding: 2px 0;
+    margin-bottom: 4px;
 }
 
 .analysis-section summary:hover {
@@ -901,9 +900,7 @@
 
 .analysis-content {
     margin: 0;
-    padding: 0;
-    background: var(--surface-color);
-    border-radius: 4px;
+    padding: 4px 0;
     font-size: 0.95em;
 }
 
@@ -918,6 +915,7 @@
 
 .analysis-content .markdown-body {
     padding: 0;
+    margin: 0;
 }
 
 /* 确保分析部分在听力模式下也被遮罩 */

@@ -2258,23 +2258,35 @@ document.addEventListener('DOMContentLoaded', async function() {
                         // 如果有分析，添加分析部分
                         if (msg.analysis) {
                             const contentArea = messageInstance.element.querySelector('.message-content');
-                            contentArea.innerHTML += `
-                                <details class="analysis-section">
+                            contentArea.insertAdjacentHTML('beforeend', 
+                                `<details class="analysis-section">
                                     <summary>分析</summary>
-                                    <div class="analysis-content">${msg.analysis}</div>
-                                </details>
-                            `;
+                                    <div class="analysis-content markdown-body">${marked.parse(msg.analysis)}</div>
+                                </details>`
+                            );
+                            // 应用代码高亮
+                            contentArea.querySelectorAll('pre code').forEach((block) => {
+                                if (typeof hljs !== 'undefined') {
+                                    hljs.highlightElement(block);
+                                }
+                            });
                         }
                         
                         // 如果有翻译，添加翻译部分
                         if (msg.translation) {
                             const contentArea = messageInstance.element.querySelector('.message-content');
-                            contentArea.innerHTML += `
-                                <details class="translation-section">
+                            contentArea.insertAdjacentHTML('beforeend', 
+                                `<details class="translation-section">
                                     <summary>翻译</summary>
-                                    <div class="translation-content">${msg.translation}</div>
-                                </details>
-                            `;
+                                    <div class="translation-content markdown-body">${marked.parse(msg.translation)}</div>
+                                </details>`
+                            );
+                            // 应用代码高亮
+                            contentArea.querySelectorAll('pre code').forEach((block) => {
+                                if (typeof hljs !== 'undefined') {
+                                    hljs.highlightElement(block);
+                                }
+                            });
                         }
                         
                         // 添加到聊天历史
@@ -3126,12 +3138,11 @@ document.addEventListener('DOMContentLoaded', async function() {
                 return;
             }
 
-            const analysisHtml = `
-                <details class="analysis-section" open>
+            const analysisHtml = 
+                `<details class="analysis-section" open>
                     <summary>分析</summary>
                     <div class="analysis-content">正在分析...</div>
-                </details>
-            `;
+                </details> `;
             
             contentArea.innerHTML += analysisHtml;
             const analysisContent = contentArea.querySelector('.analysis-content');
@@ -3205,12 +3216,11 @@ document.addEventListener('DOMContentLoaded', async function() {
                 return;
             }
 
-            const translationHtml = `
-                <details class="translation-section" open>
+            const translationHtml = 
+                `<details class="translation-section" open>
                     <summary>翻译</summary>
                     <div class="translation-content">正在翻译...</div>
-                </details>
-            `;
+                </details>`;
             
             contentArea.innerHTML += translationHtml;
             const translationContent = contentArea.querySelector('.translation-content');
