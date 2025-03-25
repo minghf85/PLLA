@@ -6,7 +6,6 @@ import os
 import time
 import datetime
 import json
-import signal
 import sys
 app = Flask(__name__)
 config = Config()
@@ -520,29 +519,12 @@ def update_message():
             'error': str(e)
         }), 500
 
-def signal_handler(sig, frame):
-    """处理退出信号"""
-    print('\nShutting down server...')
-    if stt:
-        stt.stop()
-    sys.exit(0)
-
-# 注册信号处理器
-signal.signal(signal.SIGINT, signal_handler)
-signal.signal(signal.SIGTERM, signal_handler)
-
 if __name__ == '__main__':
     # 修改启动方式
     from werkzeug.serving import run_simple
-    
-    try:
-        # 使用 run_simple 替代 app.run
-        run_simple('0.0.0.0', 5000, app, 
-                  use_reloader=False,  # 禁用重载器
-                  use_debugger=False,  # 禁用调试器
-                  threaded=True)       # 启用多线程
-    except KeyboardInterrupt:
-        # 确保正确清理资源
-        if stt:
-            stt.stop()
-        print("\nServer shutting down...")
+    # 使用 run_simple 替代 app.run
+    run_simple('0.0.0.0', 5000, app, 
+                use_reloader=False,  # 禁用重载器
+                use_debugger=False,  # 禁用调试器
+                threaded=True)       # 启用多线程
+

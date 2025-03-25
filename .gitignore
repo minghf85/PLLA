@@ -173,3 +173,4 @@ config.json
 STT_test.py
 test_TTS.py
 models/
+api4sensevoice/

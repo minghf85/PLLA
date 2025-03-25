@@ -1,6 +1,6 @@
 # PLLA (Personalized Language Learning Assistant)
 
-PLLA 是一个个性化语言学习助手，它结合了 AI 对话、语音识别、语音合成等功能，为用户提供沉浸式的语言学习体验。
+PLLA 是一个可以免费、完全本地运行的个性化语言学习助手，它结合了 AI 对话、语音识别、语音合成等功能，为用户提供沉浸式的语言学习体验。
 
 ## 功能特点
 
@@ -23,15 +23,48 @@ PLLA 是一个个性化语言学习助手，它结合了 AI 对话、语音识�
 - Python
 - Flask
 - SQLite
-- RealtimeSTT
-- RealtimeTTS
+- sensevoice(支持多种语言)
+- RealtimeTTS(目前支持引擎edge,kokoro,coqui)
 
 ## 快速开始
 
 ### 环境要求
-- Python 3.8+
-- CUDA (用于语音模型)
-- Node.js (可选，用于开发)
+- Python 3.10+
+- cuda
 
 ### 安装步骤
 1. 克隆仓库
+```bash
+  git clone https://github.com/your-repo/PLLA.git
+  cd PLLA
+  cp config1.json config.json
+```
+1. 创建并激活虚拟环境
+```bash
+  conda create -n plla python=3.12
+  conda activate plla
+```
+1. 安装依赖
+```bash
+  # 基础使用：聊天、翻译、分析
+  pip install -r requirements.txt
+  # 语音合成（使用时会从huggingface下载模型，需科学上网）
+  # 下面为kokoro引擎的安装使用，包含多种主流语言，另外edge和coqui请参考realtimeTTS项目的文档说明
+  pip install "RealtimeTTS[kokoro,jp,zh]" 
+  # 语音识别功能参考api4sensevoice项目的说明部署安装即可，不需要则可以跳过
+  # 安装完成后复制本项目的stt_server.py到api4sensevoice项目下
+```
+### 使用方法
+1. 启动后端服务
+```bash
+  # 启动并等待tts服务加载完成
+  python tts_server.py
+  # 在api4sensevoice项目下启动stt_server.py并等待加载完成
+  python stt_server.py
+  # 启动前端服务
+  python main.py
+```
+2. 打开前端页面
+   在浏览器打开[PLLA地址127.0.0.1:5000](127.0.0.1:5000)  
+3. UI使用说明
+   
