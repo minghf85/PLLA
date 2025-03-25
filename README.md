@@ -25,6 +25,7 @@ PLLA 是一个可以免费、完全本地运行的个性化语言学习助手，
 - SQLite
 - sensevoice(支持多种语言)
 - RealtimeTTS(目前支持引擎edge,kokoro,coqui)
+- GPT_SoVits(api调用，端口绑定6880)
 
 ## 快速开始
 
@@ -57,9 +58,9 @@ PLLA 是一个可以免费、完全本地运行的个性化语言学习助手，
 ### 使用方法
 1. 启动后端服务
 ```bash
-  # 启动并等待tts服务加载完成
+  # （可选）启动并等待tts服务加载完成或者使用GPT_SoVits的api，端口号6880
   python tts_server.py
-  # 在api4sensevoice项目下启动stt_server.py并等待加载完成
+  # （可选）在api4sensevoice项目下启动stt_server.py并等待加载完成
   python stt_server.py
   # 启动前端服务
   python main.py
@@ -68,3 +69,14 @@ PLLA 是一个可以免费、完全本地运行的个性化语言学习助手，
    在浏览器打开[PLLA地址127.0.0.1:5000](127.0.0.1:5000)  
 3. UI使用说明
    
+### 待实现
+- [ ]整合版本的推出
+- [ ]简化的启动方式
+- [ ]循序渐进的学习路径规划
+- [ ]教材知识库的录入
+- [ ]live2d或其他形象的支持
+
+### 项目鸣谢
+- [api4sensevoice](https://github.com/0x5446/api4sensevoice)
+- [realtimeTTS](https://github.com/KoljaB/RealtimeTTS)
+- [GPT_SoVits](https://github.com/RVC-Boss/GPT-SoVITS)
