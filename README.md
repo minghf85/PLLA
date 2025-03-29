@@ -34,18 +34,20 @@ PLLA 是一个可以免费、完全本地运行的个性化语言学习助手，
 - cuda
 
 ### 安装步骤
-1. 克隆仓库
+1. mpv安装
+   运行bootstrapper/update.bat(可能需要管理员运行和vpn)，也可自行搜索如何安装mpv
+2. 克隆仓库
 ```bash
   git clone https://github.com/your-repo/PLLA.git
   cd PLLA
   cp config1.json config.json
 ```
-1. 创建并激活虚拟环境
+3. 创建并激活虚拟环境
 ```bash
   conda create -n plla python=3.12
   conda activate plla
 ```
-1. 安装依赖
+4. 安装依赖
 ```bash
   # 基础使用：聊天、翻译、分析
   pip install -r requirements.txt
@@ -65,9 +67,9 @@ PLLA 是一个可以免费、完全本地运行的个性化语言学习助手，
   # 启动前端服务
   python main.py
 ```
-2. 打开前端页面
+1. 打开前端页面
    在浏览器打开[PLLA地址127.0.0.1:5000](127.0.0.1:5000)  
-3. UI使用说明
+2. UI使用说明
    通过磁贴的形式+拖动放缩点击来实现所有功能，将联系人和场景拖入其他的磁贴，会有相应的效果和功能
    ![主界面](./assets/present/主界面.png)
    
